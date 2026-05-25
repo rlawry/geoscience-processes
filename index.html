@@ -1,0 +1,2688 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TUNNEL OF DOOM</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+            font-family: 'Courier New', monospace;
+        }
+        #wrap {
+            position: relative;
+            width: 100vmin;
+            height: 100vmin;
+            max-width: 800px;
+            max-height: 800px;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            border: 2px solid #553300;
+        }
+
+        /* ── shared screen overlays ─────────────────── */
+        .screen {
+            display: none;
+            position: absolute;
+            inset: 0;
+            z-index: 70;
+            background: #000;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+        .screen.active { display: flex; }
+        @keyframes blink    { 0%,100%{opacity:1} 50%{opacity:0} }
+        @keyframes subPulse { 0%,100%{opacity:0.7} 50%{opacity:1} }
+
+        /* ── title ──────────────────────────────────── */
+        #screenTitle { gap: 28px; }
+        #titleText {
+            font-size: clamp(28px,6vmin,48px);
+            color: #ffcc44;
+            letter-spacing: 8px;
+            text-shadow: 0 0 10px #ff6600, 0 0 60px #ff3300;
+            min-height: 1.3em;
+            font-weight: bold;
+        }
+        #titleSub {
+            font-size: clamp(11px,2.2vmin,16px);
+            color: #886633;
+            letter-spacing: 3px;
+            min-height: 1.4em;
+            animation: subPulse 2.5s ease-in-out infinite;
+        }
+
+        /* ── instructions ───────────────────────────── */
+        #screenInstr { align-items:flex-start; padding:6% 8%; overflow:hidden; gap:0; }
+        #instrContent { display:flex; flex-direction:column; gap:0; width:100%; }
+        .instr-line {
+            font-size: clamp(13px,2.6vmin,18px);
+            color: #cc9944;
+            letter-spacing: 1.5px;
+            line-height: 1.7;
+            text-align: left;
+            -webkit-font-smoothing: none;
+            min-height: 1.7em;
+            font-weight: 800;
+        }
+        .instr-line.spacer { min-height: 0.6em; }
+        .instr-line.bright { color: #ffdd77; }
+        #instrEnterPrompt {
+            font-size: clamp(10px,1.8vmin,13px);
+            color: #664422;
+            letter-spacing: 3px;
+            margin-top: 14px;
+            min-height: 1.4em;
+        }
+        #instrEnterPrompt.show { animation: blink 0.8s step-end infinite; }
+        #beginWrap { display:none; flex-direction:column; gap:18px; margin-top:20px; width:100%; }
+        #beginWrap.show { display:flex; }
+        #beginText {
+            font-size: clamp(18px,4vmin,30px);
+            color: #ffcc44;
+            letter-spacing: 6px;
+            text-shadow: 0 0 10px #ff6600;
+            min-height: 1.3em;
+            font-weight: 900;
+        }
+        #beginSub {
+            font-size: clamp(10px,1.8vmin,13px);
+            color: #886633;
+            letter-spacing: 3px;
+            animation: blink 0.8s step-end infinite;
+        }
+
+        /* ── name entry ─────────────────────────────── */
+        #screenName { gap: 30px; }
+        #namePromptEl {
+            font-size: clamp(14px,3vmin,22px);
+            color: #ffcc44;
+            letter-spacing: 3px;
+            min-height: 1.4em;
+        }
+        #nameInputArea {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            width: 80%;
+            max-width: 400px;
+        }
+        #nameInputArea.show { display: flex; }
+        #nameSubLabel {
+            font-size: clamp(10px,1.8vmin,12px);
+            color: #664422;
+            letter-spacing: 2px;
+        }
+        #nameTermWrap {
+            width: 100%;
+            border-bottom: 2px solid #886622;
+            padding: 6px 4px;
+            display: flex;
+            align-items: center;
+            cursor: text;
+            position: relative;
+        }
+        #nameTermWrap:focus-within { border-bottom-color: #ffaa33; }
+        #nameDisplay {
+            font-size: clamp(16px,3vmin,22px);
+            color: #ffcc55;
+            letter-spacing: 3px;
+            white-space: pre;
+        }
+        #nameInput {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            background: transparent;
+            border: none;
+            outline: none;
+            font-family: 'Courier New', monospace;
+            font-size: 18px;
+            caret-color: transparent;
+            cursor: text;
+        }
+
+        /* HUD is drawn on canvas */
+
+        /* ── CONVERSATION PANELS (top of screen) ──────── */
+        #convoWrap {
+            display: none;
+            position: absolute;
+            top: 10px; left: 10px; right: 10px;
+            max-height: 52%;
+            z-index: 30;
+            flex-direction: row;
+            gap: 8px;
+            align-items: flex-start;
+        }
+        #convoWrap.show { display: flex; }
+
+        #hintsPanel {
+            width: 190px;
+            flex-shrink: 0;
+            max-height: 52vh;
+            overflow-y: auto;
+            background: rgba(0,18,12,0.93);
+            border: 1px solid #226644;
+            padding: 8px 10px;
+        }
+        #hintsPanel::-webkit-scrollbar { width: 3px; }
+        #hintsPanel::-webkit-scrollbar-thumb { background: #226644; }
+
+        .panel-label {
+            font-size: 9px;
+            letter-spacing: 3px;
+            color: #44aa77;
+            margin-bottom: 6px;
+            padding-bottom: 4px;
+            border-bottom: 1px solid #226644;
+        }
+        .hint-item {
+            font-size: 12px;
+            line-height: 1.7;
+            color: #88ffcc;
+            padding: 1px 0;
+        }
+
+        #dialogPanel {
+            flex: 1;
+            max-height: 52vh;
+            overflow-y: auto;
+            background: rgba(3,1,0,0.88);
+            border: 1px solid #553300;
+            padding: 10px 14px 8px;
+        }
+        #dialogPanel::-webkit-scrollbar { width: 4px; }
+        #dialogPanel::-webkit-scrollbar-thumb { background: #553300; }
+
+        .spk-gremlin { color: #ffdd44; font-weight: 900; }
+
+        .convo-line {
+            font-size: 13px;
+            line-height: 1.85;
+            color: #ccaa33;
+            font-weight: 700;
+            min-height: 1.2em;
+        }
+        .convo-line.new-speaker { margin-top: 7px; }
+        .convo-spk {
+            font-size: 10px;
+            letter-spacing: 2px;
+            margin-right: 4px;
+        }
+        .cl-wrong   { color: #ff5533; }
+        .cl-correct { color: #44ff88; font-weight: bold; }
+        .cl-note    { color: #887733; font-size: 11px; font-style: italic; }
+        .cl-sys     { color: #ffdd55; }
+
+        /* ── PLAYER INPUT (bottom of screen, above HUD) */
+        #playerInputBox {
+            display: none;
+            position: absolute;
+            bottom: 44px; left: 10px; right: 10px;
+            background: rgba(3,1,0,0.92);
+            border: 1px solid #553300;
+            border-bottom: none;
+            padding: 8px 14px 10px;
+            z-index: 30;
+        }
+        #playerInputBox.show { display: block; }
+        #playerLabel {
+            font-size: 10px;
+            color: #55ff88;
+            letter-spacing: 2px;
+            margin-bottom: 4px;
+        }
+        #playerTermWrap {
+            border-bottom: 2px solid #446644;
+            padding: 4px 2px 3px;
+            display: flex;
+            align-items: center;
+            cursor: text;
+            position: relative;
+        }
+        #playerTermWrap:focus-within { border-bottom-color: #55ff88; }
+        #playerDisplay {
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            color: #ffcc55;
+            white-space: pre;
+        }
+        #playerAnswer {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            background: transparent;
+            border: none;
+            outline: none;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            caret-color: transparent;
+            cursor: text;
+        }
+
+        /* ── shared block cursor ────────────────────── */
+        .block-cursor {
+            display: inline-block;
+            width: 9px;
+            height: 14px;
+            background: #ffcc55;
+            vertical-align: middle;
+            margin-left: 1px;
+            opacity: 0;
+        }
+        .block-cursor.active { animation: blink 0.65s step-end infinite; }
+        #nameCursor { background: #ffcc55; }
+        #playerCursor { background: #88ff99; }
+
+        /* ── gremlin greeting overlay ───────────────── */
+        #greetingOverlay {
+            display: none;
+            position: absolute;
+            inset: 0;
+            overflow: hidden;
+            background: rgba(0,0,0,0.97);
+            z-index: 55;
+        }
+        #greetingOverlay.active { display: block; }
+        /* top fade - old lines dissolve as they scroll off */
+        #greetingOverlay::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 42%;
+            background: linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 100%);
+            z-index: 1;
+            pointer-events: none;
+        }
+        #greetingContent {
+            position: absolute;
+            left: 11%; right: 11%;
+            bottom: 48%;   /* newest line sits at vertical center; grows upward */
+        }
+        .g-line {
+            font-size: clamp(12px,2.3vmin,15px);
+            line-height: 2.0;
+            color: #ccaa33;
+            letter-spacing: 0.5px;
+            min-height: 1.6em;
+            -webkit-font-smoothing: none;
+        }
+        .g-line.dim   { color: #887733; font-style: italic; }
+        .g-line.bright{ color: #ffdd55; font-weight: bold; }
+        .g-line.eg    { color: #66cc88; font-size: clamp(11px,2vmin,13px);
+                        letter-spacing: 2px; min-height: 1.4em; }
+        .g-line.gap   { min-height: 0.65em; }
+        #greetingEnter {
+            display: none;
+            position: absolute;
+            left: 11%;
+            top: 54%;
+            color: #664422;
+            font-size: clamp(10px,1.8vmin,12px);
+            letter-spacing: 3px;
+            animation: blink 0.9s step-end infinite;
+        }
+        #greetingEnter.show { display: block; }
+
+        /* ── final boss quiz overlay ────────────────── */
+        #finalQuizOverlay {
+            display: none;
+            position: absolute;
+            left: 0; right: 0; top: 0;
+            background: rgba(0,0,0,0.91);
+            border-bottom: 2px solid #553300;
+            padding: 10px 14px 14px;
+            z-index: 45;
+            flex-direction: column;
+            gap: 6px;
+        }
+        #finalQuizOverlay.active { display: flex; }
+        #fqProgress {
+            font-size: 10px; color: #554433; letter-spacing: 3px;
+        }
+        #fqQuestion {
+            font-size: clamp(11px,2vmin,13px); color: #ddc888;
+            font-weight: 700; line-height: 1.55; max-height: 5.5em; overflow: hidden;
+        }
+        #fqOptions {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-top: 2px;
+        }
+        .fq-opt {
+            font-size: clamp(10px,1.75vmin,12px); color: #aa9966;
+            padding: 4px 8px; border: 1px solid #3a2810;
+            background: rgba(12,6,0,0.7); letter-spacing: 1px;
+        }
+        .fq-opt .fq-key { color: #ffcc55; font-weight: 900; margin-right: 5px; }
+        #fqFeedback {
+            font-size: 12px; min-height: 1.3em; letter-spacing: 1px; font-weight: bold;
+        }
+
+        /* ── hallway slip paper overlay ─────────────── */
+        #slipOverlay {
+            display: none; position: absolute; inset: 0; z-index: 52;
+            background: rgba(0,0,0,0.80);
+            justify-content: center; align-items: center;
+        }
+        #slipOverlay.active { display: flex; }
+        #slipPaper {
+            background: linear-gradient(140deg,#f6f0dc,#ece3be);
+            border: 1px solid #c0a050;
+            padding: 26px 34px 22px; max-width: 340px; width: 82%;
+            text-align: center;
+            box-shadow: 3px 5px 28px rgba(0,0,0,0.75), inset 0 0 10px rgba(180,140,40,0.12);
+            font-family: 'Courier New', monospace;
+            transform: rotate(-1.8deg);
+            transition: transform 0.35s ease, background 0.35s ease, opacity 0.35s ease;
+        }
+        #slipPaper.crumble {
+            background: linear-gradient(140deg,#c8b880,#a89050);
+            transform: rotate(4deg) scale(0.88);
+            opacity: 0.75;
+        }
+        #slipName {
+            font-size: clamp(13px,3vmin,18px); color: #1a0e00;
+            font-weight: 900; letter-spacing: 3px; text-transform: uppercase;
+            margin-bottom: 12px; border-bottom: 1px solid #b89040; padding-bottom: 10px;
+        }
+        #slipMsg {
+            font-size: clamp(10px,2vmin,12px); color: #554422;
+            font-style: italic; line-height: 1.6; margin-bottom: 14px;
+        }
+        #slipAction {
+            font-size: clamp(9px,1.7vmin,11px); color: #886644;
+            letter-spacing: 2px; animation: blink 0.9s step-end infinite;
+        }
+
+        /* ── space hint ─────────────────────────────── */
+        #spaceHint {
+            display: none;
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            z-index: 30;
+            justify-content: center;
+            align-items: flex-end;
+            padding-bottom: 14%;
+            font-family: 'Courier New', monospace;
+            font-size: clamp(11px,2vmin,14px);
+            font-weight: bold;
+            color: #cccccc;
+            letter-spacing: 3px;
+            opacity: 1;
+            transition: opacity 1.4s ease-out;
+        }
+        #spaceHint.active { display: flex; }
+        #spaceHint.fade   { opacity: 0; }
+
+        /* ── paper overlay ──────────────────────────── */
+        #paperOverlay {
+            display: none;
+            position: absolute;
+            inset: 0;
+            background: rgba(0,0,0,0.82);
+            justify-content: center;
+            align-items: center;
+            z-index: 70;
+        }
+        #paperOverlay.active { display: flex; }
+        #paperDoc {
+            position: relative;
+            width: min(520px, 88vw);
+            max-height: 82vh;
+            overflow-y: auto;
+            background: linear-gradient(160deg, #f2e0b0 0%, #e8d090 40%, #dfc47a 100%);
+            padding: 38px 44px 32px;
+            font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, Georgia, serif;
+            color: #2a1a00;
+            clip-path: polygon(
+                0% 3%, 2% 1%, 4% 3%, 7% 0%, 10% 2%, 14% 0%, 17% 3%, 21% 0%,
+                25% 2%, 29% 0%, 33% 3%, 37% 0%, 41% 2%, 45% 0%, 49% 3%,
+                53% 0%, 57% 2%, 61% 0%, 65% 3%, 69% 0%, 73% 2%, 77% 0%,
+                81% 3%, 85% 0%, 89% 2%, 93% 0%, 96% 3%, 98% 1%, 100% 3%,
+                99% 12%, 100% 24%, 98% 36%, 100% 48%, 99% 60%, 100% 72%,
+                98% 84%, 100% 97%,
+                97% 100%, 93% 97%, 89% 100%, 85% 97%, 81% 100%, 77% 97%,
+                73% 100%, 69% 97%, 65% 100%, 61% 97%, 57% 100%, 53% 97%,
+                49% 100%, 45% 97%, 41% 100%, 37% 97%, 33% 100%, 29% 97%,
+                25% 100%, 21% 97%, 17% 100%, 13% 97%, 9% 100%, 5% 97%,
+                2% 100%, 0% 97%,
+                1% 84%, 0% 72%, 2% 60%, 0% 48%, 1% 36%, 0% 24%, 2% 12%, 0% 3%
+            );
+            box-shadow: 4px 6px 30px rgba(0,0,0,0.7), 0 0 80px rgba(200,160,60,0.2);
+        }
+        #paperDoc::-webkit-scrollbar { width: 0; }
+        #paperTitle {
+            font-size: 22px;
+            font-style: italic;
+            font-weight: bold;
+            text-align: center;
+            line-height: 1.35;
+            letter-spacing: 1px;
+            color: #1a0e00;
+            text-shadow: 1px 1px 0 rgba(255,220,100,0.3);
+            margin-bottom: 10px;
+        }
+        #paperRule {
+            border: none;
+            border-top: 2px solid #8a6020;
+            margin: 10px 10px 14px;
+            opacity: 0.6;
+        }
+        #paperList {
+            margin: 0 0 0 18px;
+            padding: 0;
+            columns: 2;
+            column-gap: 24px;
+        }
+        #paperList li {
+            font-size: 14px;
+            line-height: 2.1;
+            color: #2a1500;
+            break-inside: avoid;
+            text-transform: capitalize;
+        }
+        #paperPrompt {
+            text-align: center;
+            margin-top: 18px;
+            font-size: 12px;
+            letter-spacing: 2px;
+            color: #5a3800;
+            font-style: italic;
+            animation: blink 1.1s step-end infinite;
+        }
+
+        /* ── game over ───────────────────────────────── */
+        #gameOver {
+            display: none;
+            position: absolute;
+            inset: 0;
+            background: rgba(0,0,0,0.93);
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            z-index: 60;
+            gap: 14px;
+        }
+        #gameOver.active { display: flex; }
+        #goTitle  { font-size: 30px; letter-spacing: 4px; }
+        #goStats  { color: #aa8844; font-size: 13px; line-height: 2.2; }
+        #goRestart { color: #ffcc44; font-size: 12px; animation: blink 0.9s step-end infinite; }
+    </style>
+</head>
+<body>
+<div id="wrap">
+    <canvas id="c"></canvas>
+
+    <!-- Conversation log (top) -->
+    <div id="convoWrap">
+        <div id="hintsPanel">
+            <div class="panel-label">HINTS</div>
+        </div>
+        <div id="dialogPanel"></div>
+    </div>
+
+    <!-- Player input (bottom, above HUD) -->
+    <div id="playerInputBox">
+        <div id="playerLabel">EXPLORER:</div>
+        <div id="playerTermWrap">
+            <span id="playerDisplay"></span>
+            <span id="playerCursor" class="block-cursor"></span>
+            <input id="playerAnswer" type="text" autocomplete="off" spellcheck="false">
+        </div>
+    </div>
+
+    <!-- Gremlin intro overlay (first door only) -->
+    <div id="greetingOverlay">
+        <div id="greetingContent"></div>
+        <div id="greetingEnter">[ press enter ]</div>
+    </div>
+
+    <!-- Hallway slip paper -->
+    <div id="slipOverlay">
+        <div id="slipPaper">
+            <div id="slipName"></div>
+            <div id="slipMsg"></div>
+            <div id="slipAction"></div>
+        </div>
+    </div>
+
+    <!-- Space hint -->
+    <div id="spaceHint">press space to move forward</div>
+
+    <!-- Final boss quiz -->
+    <div id="finalQuizOverlay">
+        <div id="fqProgress"></div>
+        <div id="fqQuestion"></div>
+        <div id="fqOptions"></div>
+        <div id="fqFeedback"></div>
+    </div>
+
+    <!-- Paper overlay -->
+    <div id="paperOverlay">
+        <div id="paperDoc">
+            <div id="paperTitle">Secret List of<br>Geoscience Processes</div>
+            <div id="paperRule"></div>
+            <ol id="paperList"></ol>
+            <div id="paperPrompt"></div>
+        </div>
+    </div>
+
+    <!-- Game over -->
+    <div id="gameOver">
+        <div id="goTitle"></div>
+        <div id="goStats"></div>
+        <div id="goRestart">[ PRESS SPACE TO PLAY AGAIN ]</div>
+    </div>
+
+    <!-- Title screen -->
+    <div id="screenTitle" class="screen active">
+        <div id="titleText"></div>
+        <div id="titleSub"></div>
+    </div>
+
+    <!-- Instructions screen -->
+    <div id="screenInstr" class="screen">
+        <div id="instrContent"></div>
+        <div id="instrEnterPrompt"></div>
+        <div id="beginWrap">
+            <div id="beginText"></div>
+            <div id="beginSub">[ PRESS ENTER TO BEGIN ]</div>
+        </div>
+    </div>
+
+    <!-- Name entry screen -->
+    <div id="screenName" class="screen">
+        <div id="namePromptEl"></div>
+        <div id="nameInputArea">
+            <div id="nameSubLabel">[ PRESS ENTER TO CONTINUE ]</div>
+            <div id="nameTermWrap">
+                <span id="nameDisplay"></span>
+                <span id="nameCursor" class="block-cursor"></span>
+                <input id="nameInput" type="text" autocomplete="off" spellcheck="false" maxlength="20">
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  CANVAS
+// ═══════════════════════════════════════════════════════
+const canvas = document.getElementById('c');
+const ctx    = canvas.getContext('2d');
+function resize() { canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight; }
+resize();
+window.addEventListener('resize', resize);
+
+// ═══════════════════════════════════════════════════════
+//  CONSTANTS
+// ═══════════════════════════════════════════════════════
+const FOCAL        = 320;
+const DOOR_SPACING = 380;
+const RING_SPACING = 55;
+const STEP         = 26;
+const TORCH_MAX    = 1800;
+const TORCH_WALK   = 0.35;
+const TORCH_WAIT   = 0.06;
+const MAX_PASSES   = 3;
+const TORCH_DEPTH  = 350; // depth units at which torch light cuts off
+const PAPER_POS    = 190; // depth where the paper sits (before first door)
+
+// ═══════════════════════════════════════════════════════
+//  APP SCREEN STATE
+// ═══════════════════════════════════════════════════════
+let appScreen = 'title'; // title | instructions | name | game
+
+// ═══════════════════════════════════════════════════════
+//  TYPEWRITER ENGINE
+// ═══════════════════════════════════════════════════════
+const tw = {
+    el:null, full:'', idx:0, timer:null, onDone:null,
+    start(el,text,speed,done) {
+        clearInterval(this.timer);
+        this.el=el; this.full=text; this.idx=0; this.onDone=done;
+        this.timer=setInterval(()=>this._tick(),speed);
+    },
+    _tick() {
+        if (this.idx>=this.full.length) {
+            clearInterval(this.timer); this.timer=null;
+            if (this.onDone) this.onDone(); return;
+        }
+        this.idx++;
+        this.el.textContent=this.full.slice(0,this.idx);
+    },
+    skip() {
+        if (!this.timer) return;
+        clearInterval(this.timer); this.timer=null;
+        this.el.textContent=this.full;
+        if (this.onDone) this.onDone();
+    },
+    running() { return this.timer!==null; }
+};
+
+// ═══════════════════════════════════════════════════════
+//  TITLE SCREEN
+// ═══════════════════════════════════════════════════════
+let titlePhase = 'title';
+function startTitle() {
+    titlePhase='title';
+    document.getElementById('titleText').textContent='';
+    document.getElementById('titleSub').textContent='';
+    tw.start(document.getElementById('titleText'),'TUNNEL OF DOOM',90,()=>{
+        titlePhase='sub';
+        setTimeout(()=>{
+            tw.start(document.getElementById('titleSub'),'[ press enter ]',55,()=>{titlePhase='wait';});
+        },500);
+    });
+}
+function titleHandleEnter() {
+    if (titlePhase==='title') {
+        tw.skip(); titlePhase='sub';
+        tw.start(document.getElementById('titleSub'),'[ press enter ]',55,()=>{titlePhase='wait';});
+    } else if (titlePhase==='sub') {
+        tw.skip();
+    } else {
+        goToInstructions();
+    }
+}
+
+// ═══════════════════════════════════════════════════════
+//  INSTRUCTIONS SCREEN
+// ═══════════════════════════════════════════════════════
+const INSTR_LINES = [
+    {text:'what day is it?',bright:false},
+    {text:'',bright:false},
+    {text:'where am I?',bright:false},
+    {text:'',bright:false},
+    {text:'[you wake up in a tunnel with only one way forward]',bright:false},
+    {text:'',bright:false},
+    {text:'[if you can escape, what lies afterwards?]',bright:false},
+    {text:'',bright:false},
+    {text:'am I alone?',bright:false},
+    {text:'',bright:false},
+    {text:'what exists down this hallway?',bright:false},
+    {text:'',bright:false},
+    {text:"I hope this torch doesn't run out.",bright:false},
+    {text:'',bright:false},
+    {text:'I need to be quick.',bright:true},
+];
+let instrIdx=0, instrPhase='typing';
+
+const GREMLIN_INTRO_LINES = [
+    {text:'*a faint scratching echoes through the stone*',         style:'dim'},
+    {text:''},
+    {text:'*two eyes blink open in the dark*',              style:'dim'},
+    {text:''},
+    {text:'oh.',                                                    style:''},
+    {text:''},
+    {text:'a human.',                                              style:''},
+    {text:'in MY tunnel.',                                         style:'bright'},
+    {text:''},
+    {text:"i suppose you want to pass through.",                   style:''},
+    {text:'they always want to pass through.',                     style:''},
+    {text:''},
+    {text:"fine. but you will answer my question first.",         style:''},
+    {text:''},
+    {text:'here is how this works.',                               style:'bright'},
+    {text:''},
+    {text:'i will describe a geoscience process.',                 style:''},
+    {text:'you type the NAME of that process. for example:',       style:''},
+    {text:''},
+    {text:'  > erosion',                                           style:'eg'},
+    {text:'  > convection',                                        style:'eg'},
+    {text:'  > radioactive decay',                                 style:'eg'},
+    {text:'  > sea floor spreading',                               style:'eg'},
+    {text:'  > physical or mechanical weathering',                    style:'eg'},
+    {text:''},
+    {text:"i will start you with a hint. call it charity.",        style:''},
+    {text:'if you need more clues, type:   HINT',                  style:'bright'},
+    {text:''},
+    {text:'six wrong answers and i may offer you the answer.',     style:''},
+    {text:'that costs a PASS.',                                    style:''},
+    {text:'you have three passes. do not squander them.',          style:''},
+    {text:''},
+    {text:'*shifts weight. eyes you with suspicion.*',             style:'dim'},
+    {text:''},
+    {text:'your torch burns whether you move or not.',             style:''},
+    {text:"i would not dawdle.",                                   style:'bright'},
+];
+let greetingShown = false;
+let greetingCallback = null;
+
+let greetIdx = 0, greetPhase = 'typing'; // 'typing' | 'waiting' | 'done'
+
+function showGreeting(afterDone) {
+    greetingCallback = afterDone;
+    game.greetingActive = true;
+    greetIdx = 0; greetPhase = 'typing';
+    const content = document.getElementById('greetingContent');
+    const enterPrompt = document.getElementById('greetingEnter');
+    content.innerHTML = '';
+    enterPrompt.classList.remove('show');
+    enterPrompt.textContent = '[ press enter ]';
+    document.getElementById('greetingOverlay').classList.add('active');
+    greetRevealNext();
+}
+
+function greetRevealNext() {
+    const content = document.getElementById('greetingContent');
+    const enterPrompt = document.getElementById('greetingEnter');
+    // skip blank/gap lines instantly
+    while (greetIdx < GREMLIN_INTRO_LINES.length && !GREMLIN_INTRO_LINES[greetIdx].text) {
+        const gap = document.createElement('div');
+        gap.className = 'g-line gap';
+        content.appendChild(gap);
+        greetIdx++;
+    }
+    if (greetIdx >= GREMLIN_INTRO_LINES.length) {
+        greetPhase = 'done';
+        enterPrompt.classList.add('show');
+        return;
+    }
+    const line = GREMLIN_INTRO_LINES[greetIdx];
+    greetPhase = 'typing';
+    enterPrompt.classList.remove('show');
+    const div = document.createElement('div');
+    div.className = 'g-line' + (line.style ? ' ' + line.style : '');
+    content.appendChild(div);
+    const speed = line.style === 'dim' ? 22 : line.style === 'eg' ? 32 : 26;
+    tw.start(div, line.text, speed, () => {
+        greetPhase = 'waiting';
+        enterPrompt.classList.add('show');
+    });
+}
+
+function greetHandleEnter() {
+    if (greetPhase === 'typing') { tw.skip(); return; }
+    if (greetPhase === 'waiting') { greetIdx++; greetRevealNext(); return; }
+    if (greetPhase === 'done') hideGreeting();
+}
+
+function hideGreeting() {
+    document.getElementById('greetingOverlay').classList.remove('active');
+    greetingShown = true;
+    game.greetingActive = false;
+    const cb = greetingCallback;
+    greetingCallback = null;
+    if (cb) cb();
+}
+
+function goToInstructions() {
+    appScreen='instructions';
+    document.getElementById('screenTitle').classList.remove('active');
+    document.getElementById('screenInstr').classList.add('active');
+    document.getElementById('instrContent').innerHTML='';
+    document.getElementById('instrEnterPrompt').textContent='';
+    document.getElementById('instrEnterPrompt').classList.remove('show');
+    document.getElementById('beginWrap').classList.remove('show');
+    instrIdx=0; instrPhase='typing';
+    instrRevealNext();
+}
+function instrRevealNext() {
+    if (instrIdx>=INSTR_LINES.length) {
+        instrPhase='done';
+        document.getElementById('instrEnterPrompt').textContent='';
+        document.getElementById('instrEnterPrompt').classList.remove('show');
+        const bw=document.getElementById('beginWrap');
+        bw.classList.add('show');
+        document.getElementById('beginText').textContent='';
+        tw.start(document.getElementById('beginText'),'BEGIN?',120,null);
+        return;
+    }
+    const line=INSTR_LINES[instrIdx];
+    if (line.text==='') {
+        const div=document.createElement('div');
+        div.className='instr-line spacer';
+        document.getElementById('instrContent').appendChild(div);
+        instrIdx++; instrRevealNext(); return;
+    }
+    instrPhase='typing';
+    document.getElementById('instrEnterPrompt').textContent='';
+    document.getElementById('instrEnterPrompt').classList.remove('show');
+    const div=document.createElement('div');
+    div.className='instr-line'+(line.bright?' bright':'');
+    document.getElementById('instrContent').appendChild(div);
+    tw.start(div,line.text,28,()=>{
+        instrPhase='waiting';
+        document.getElementById('instrEnterPrompt').textContent='[ PRESS ENTER ]';
+        document.getElementById('instrEnterPrompt').classList.add('show');
+    });
+}
+function instrHandleEnter() {
+    if (instrPhase==='typing') { tw.skip(); return; }
+    if (instrPhase==='waiting') { instrIdx++; instrRevealNext(); return; }
+    if (instrPhase==='done') goToNameEntry();
+}
+
+// ═══════════════════════════════════════════════════════
+//  NAME ENTRY SCREEN
+// ═══════════════════════════════════════════════════════
+function goToNameEntry() {
+    appScreen='name';
+    document.getElementById('screenInstr').classList.remove('active');
+    document.getElementById('screenName').classList.add('active');
+    document.getElementById('namePromptEl').textContent='';
+    document.getElementById('nameDisplay').textContent='';
+    document.getElementById('nameInput').value='';
+    document.getElementById('nameInputArea').classList.remove('show');
+    tw.start(document.getElementById('namePromptEl'),'ENTER YOUR NAME, TRAVELLER:',60,()=>{
+        document.getElementById('nameInputArea').classList.add('show');
+        document.getElementById('nameInput').focus();
+        document.getElementById('nameCursor').classList.add('active');
+    });
+}
+function nameHandleEnter() {
+    const val=document.getElementById('nameInput').value.trim();
+    if (!val) return;
+    game.playerName=val.toUpperCase();
+    document.getElementById('screenName').classList.remove('active');
+    startGame();
+}
+
+// ═══════════════════════════════════════════════════════
+//  GAME STATE
+// ═══════════════════════════════════════════════════════
+const game = {
+    pos:0, torch:TORCH_MAX, doorsOpen:0, doorIndex:0,
+    inDialog:false, correctPending:false, gameOver:false, question:null, processes:[],
+    passes:MAX_PASSES, flicker:1, playerName:'EXPLORER',
+    fadeAlpha:0, fadeDir:0, fadeMsg:'', fadeCallback:null,
+    doorFading:false, doorFadeAlpha:1, doorPositions:[], doorEyeHues:[],
+    paperInHallway:false, paperShowing:false, paperCollected:false,
+    tunnelPalette:null,
+    exitPos:0, exitShowing:false, exitStartTime:0, exitDone:false,
+    wallTorchPos:0, wallTorchCollected:false, wallTorchShowing:false,
+    greetingActive:false,
+    finalBossActive:false, finalBossDefeated:false, finalQuiz:null,
+    hallwayPapers:[], slipShowing:false, slipPhase:'', slipIdx:-1, slipNearbyIdx:-1,
+    floorRocks:[],
+    sidePassagePos:0, sidePassageNear:false, sidePassageActive:false,
+    sidePassageTorchTaken:false, sidePassageVisited:false,
+};
+
+function genDoorPos(prev) { return prev + 700 + Math.random()*900; }
+
+// Earthy palette - hue 10-55 covers dark clay → warm sandstone → pale limestone
+function genTunnelPalette() {
+    const h  = 10 + Math.random()*45;           // base hue
+    const s  = 8  + Math.random()*44;           // base saturation
+    const lB = 22 + Math.random()*22;           // base max-lightness at depth 0
+    const rnd = n => (Math.random()-0.5)*n;
+    return {
+        // ceiling: slightly warmer & brighter (light falls from above torch)
+        ceilH:  h + rnd(8),
+        ceilS:  Math.min(60, s + 4 + Math.random()*8),
+        ceilL:  Math.min(52, lB + 6 + Math.random()*8),
+        // floor: earthier, darker
+        floorH: h + rnd(6),
+        floorS: Math.min(62, s + 5 + Math.random()*10),
+        floorL: Math.max(10, lB - 6 - Math.random()*6),
+        // side walls: close to base
+        wallH:  h + rnd(6),
+        wallS:  Math.max(4, s + rnd(8)),
+        wallL:  lB,
+        // perspective lines: subtle tint of same hue
+        lineH:  h + rnd(12),
+        lineS:  Math.max(4, s - 14),
+    };
+}
+
+function startGame() {
+    appScreen='game';
+    const sh=document.getElementById('spaceHint');
+    sh.classList.remove('fade'); sh.classList.add('active');
+    const losses = parseInt(localStorage.getItem('doom_losses')||'0');
+    const alreadyHave = localStorage.getItem('doom_paper')==='1';
+    Object.assign(game,{
+        pos:0, torch:TORCH_MAX, doorsOpen:0, doorIndex:0,
+        inDialog:false, correctPending:false, gameOver:false, question:null,
+        passes:MAX_PASSES, flicker:1,
+        fadeAlpha:0, fadeDir:0, fadeMsg:'', fadeCallback:null,
+        doorFading:false, doorFadeAlpha:1, doorPositions:[], doorEyeHues:[],
+        paperCollected: alreadyHave,
+        paperInHallway: losses >= 3 && !alreadyHave,
+        paperShowing: false,
+        tunnelPalette: genTunnelPalette(),
+        exitPos:0, exitShowing:false, exitStartTime:0, exitDone:false,
+        wallTorchPos:0, wallTorchCollected:false, wallTorchShowing:false,
+        greetingActive:false,
+        finalBossActive:false, finalBossDefeated:false, finalQuiz:null,
+        hallwayPapers:[], slipShowing:false, slipPhase:'', slipIdx:-1, slipNearbyIdx:-1,
+        floorRocks:[],
+        sidePassagePos:0, sidePassageNear:false, sidePassageActive:false,
+        sidePassageTorchTaken:false, sidePassageVisited:false,
+    });
+    let p=0;
+    for(let i=0;i<6;i++){p=genDoorPos(p);game.doorPositions.push(p);game.doorEyeHues.push(Math.random()*360|0);}
+    // Generate floor rocks once - world-space positions, stop before first door
+    {
+        const rockStop = game.doorPositions[0] - 180;
+        let rz = 30;
+        while (rz < rockStop) {
+            const count = 2 + Math.floor(Math.random() * 3);
+            for (let k = 0; k < count; k++) {
+                const s1 = Math.random() * 2 - 1;
+                const s2 = Math.random() * 2 - 1;
+                const s3 = Math.random() * 2 - 1;
+                game.floorRocks.push({
+                    z: rz + (Math.random() - 0.5) * 14,
+                    fx: 0.06 + 0.88 * ((s1 + 1) * 0.5),
+                    rwFrac: 0.028 + 0.038 * ((s2 + 1) * 0.5),
+                    rhRatio: 0.32 + 0.28 * Math.abs(s3),
+                    ang: s1 * Math.PI * 0.6,
+                    s1, s2,
+                });
+            }
+            rz += RING_SPACING * 0.82 + Math.random() * 10;
+        }
+    }
+    // Side passage in the 4th hallway (between door[2] and door[3])
+    if(game.doorPositions[2]&&game.doorPositions[3]){
+        game.sidePassagePos=game.doorPositions[2]+(game.doorPositions[3]-game.doorPositions[2])*0.45;
+    }
+    // Scatter papers in initial hallways
+    for(let i=0;i<game.doorPositions.length-1;i++){
+        if(Math.random()<0.45){
+            const p0=game.doorPositions[i],p1=game.doorPositions[i+1];
+            const pos=p0+(p1-p0)*(0.3+Math.random()*0.4);
+            const proc=game.processes[Math.floor(Math.random()*game.processes.length)];
+            game.hallwayPapers.push({pos,name:proc.id.replace(/_/g,' '),collected:false});
+        }
+    }
+}
+
+// ═══════════════════════════════════════════════════════
+//  PROCESSES
+// ═══════════════════════════════════════════════════════
+async function loadProcesses() {
+    try {
+        const r=await fetch('processes.json');
+        const d=await r.json();
+        game.processes=d.geoscience_processes;
+        shuffle(game.processes);
+    } catch(e) {
+        game.processes=[{id:'volcanism',prompt:'Molten rock forces its way to the surface.',alternative_prompts:[],buzzwords:['magma','lava','eruption']}];
+    }
+}
+
+// ═══════════════════════════════════════════════════════
+//  DIALOG SYSTEM - message queue + typewriter
+// ═══════════════════════════════════════════════════════
+const dlg = {state:'riddle', hintPool:[], hintIdx:0, attempts:0};
+
+// message queue for gremlin lines
+const msgQ=[];
+let isGremlinTyping=false;
+let lastSpeaker=null;
+
+function shuffle(arr) {
+    for (let i=arr.length-1;i>0;i--) {
+        const j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]];
+    }
+}
+function buildPool(proc) {
+    const pool=[];
+    (proc.buzzwords||[]).forEach(w=>pool.push({kind:'word',text:w}));
+    [proc.prompt,...(proc.alternative_prompts||[])].forEach(p=>pool.push({kind:'desc',text:p.replace(/\s*What process is this\?$/,'')}));
+    shuffle(pool); return pool;
+}
+function nextHint() { return dlg.hintIdx<dlg.hintPool.length?dlg.hintPool[dlg.hintIdx++]:null; }
+function fmtHint(h) {
+    if (!h) return '(The gremlin has nothing more to say.)';
+    return h.kind==='word'?`"${h.text}"`:h.text;
+}
+function isYes(s){return /^(yes|y|yeah|yep|yup|sure|ok|okay|aye|yea|absolutely|affirmative)$/i.test(s.trim());}
+function isNo(s) {return /^(no|n|nope|nah|never|negative|nay)$/i.test(s.trim());}
+
+function levenshtein(a,b){
+    const m=a.length,n=b.length;
+    const dp=Array.from({length:m+1},(_,i)=>Array.from({length:n+1},(_,j)=>i||j));
+    for(let i=1;i<=m;i++) for(let j=1;j<=n;j++)
+        dp[i][j]=a[i-1]===b[j-1]?dp[i-1][j-1]:1+Math.min(dp[i-1][j],dp[i][j-1],dp[i-1][j-1]);
+    return dp[m][n];
+}
+function isCloseAnswer(typed,expected){
+    const t=typed.toLowerCase().trim(), e=expected.toLowerCase().trim();
+    if(t.length < e.length*0.55) return false; // too short to be "close"
+    return levenshtein(t,e) <= Math.max(2,Math.floor(e.length*0.4));
+}
+
+// ── conversation log helpers ──────────────────────────
+const convoWrap  = document.getElementById('convoWrap');
+const hintsPanel = document.getElementById('hintsPanel');
+const dialogPanel= document.getElementById('dialogPanel');
+
+// Queue a gremlin line (typed out one at a time)
+function qGremlin(text, cls) {
+    msgQ.push({text, cls});
+    if (!isGremlinTyping) pumpQ();
+}
+
+function pumpQ() {
+    if (!msgQ.length) {
+        isGremlinTyping=false;
+        if (game.inDialog && !game.correctPending) showPlayerInput(true);
+        return;
+    }
+    isGremlinTyping=true;
+    showPlayerInput(false);
+    const {text,cls}=msgQ.shift();
+
+    // HUD-only notes: silently discard, state is shown in the canvas top bar
+    if (cls==='cl-hud') { isGremlinTyping=false; pumpQ(); return; }
+
+    // Hints go to the persistent hints panel immediately (no typewriter)
+    if (cls==='cl-hint') {
+        const item=document.createElement('div');
+        item.className='hint-item';
+        item.textContent=text;
+        hintsPanel.appendChild(item);
+        hintsPanel.scrollTop=hintsPanel.scrollHeight;
+        isGremlinTyping=false;
+        pumpQ();
+        return;
+    }
+
+    // All other gremlin lines go to the dialog panel with typewriter
+    const isNew=lastSpeaker!=='gremlin';
+    lastSpeaker='gremlin';
+    const line=document.createElement('div');
+    line.className='convo-line'+(cls?' '+cls:'')+(isNew?' new-speaker':'');
+    if(isNew){
+        const spk=document.createElement('span');
+        spk.className='convo-spk spk-gremlin';
+        spk.textContent='TUNNEL GREMLIN: ';
+        line.appendChild(spk);
+    }
+    const txt=document.createElement('span');
+    line.appendChild(txt);
+    dialogPanel.appendChild(line);
+    dialogPanel.scrollTop=dialogPanel.scrollHeight;
+    tw.start(txt,text,20,()=>{
+        dialogPanel.scrollTop=dialogPanel.scrollHeight;
+        pumpQ();
+    });
+}
+
+function showPlayerInput(visible) {
+    const box=document.getElementById('playerInputBox');
+    if (visible) {
+        box.classList.add('show');
+        document.getElementById('playerAnswer').focus();
+    } else {
+        box.classList.remove('show');
+    }
+}
+
+function clearConvo() {
+    dialogPanel.innerHTML='';
+    hintsPanel.innerHTML='<div class="panel-label">HINTS</div>';
+    lastSpeaker=null;
+    msgQ.length=0;
+    isGremlinTyping=false;
+}
+
+// ── open dialog ───────────────────────────────────────
+function openDialog() {
+    if (!greetingShown && game.doorIndex === 0) {
+        showGreeting(() => openDialog());
+        return;
+    }
+    game.inDialog=true;
+    const proc=game.processes[game.doorIndex%game.processes.length];
+    game.question=proc;
+    dlg.state='riddle'; dlg.hintPool=buildPool(proc); dlg.hintIdx=0; dlg.attempts=0;
+    clearConvo();
+    convoWrap.classList.add('show');
+    // update player label
+    document.getElementById('playerLabel').textContent=`${game.playerName}'s response:`;
+    setPlayerInput('');
+    qGremlin('guess the name of the geoscience process!  I\'ll give you hints!','');
+    qGremlin('your hint: '+fmtHint(nextHint()),'cl-hint');
+    qGremlin('Type your answer or type  HINT  for another clue.','cl-hud');
+}
+
+// ── give pass / fade ──────────────────────────────────
+function givePass() {
+    game.passes--;
+    const rem=game.passes;
+    const msg=rem===0
+        ?`You have been given a pass...\nThis was your LAST one.\nChoose wisely, ${game.playerName}.`
+        :`You have been given a pass, but only ${rem} remain...\nBe careful, ${game.playerName}.`;
+    convoWrap.classList.remove('show');
+    showPlayerInput(false);
+    game.fadeMsg=msg; game.fadeDir=1;
+    game.fadeCallback=()=>{ game.doorsOpen++; game.doorIndex++; game.inDialog=false; clearConvo(); };
+}
+
+// ── handle answer ─────────────────────────────────────
+function setPlayerInput(val) {
+    document.getElementById('playerAnswer').value=val;
+    document.getElementById('playerDisplay').textContent=val;
+}
+
+function handleInput(raw) {
+    const val=raw.trim(); if (!val) return;
+    setPlayerInput('');
+    showPlayerInput(false);
+
+    if (dlg.state==='riddle') {
+        if (val.toLowerCase()==='hint') {
+            const h=nextHint();
+            if (!h) qGremlin('I HAVE NO MORE HINTS TO GIVE YOU!','');
+            else     qGremlin('YOUR NEXT HINT: '+fmtHint(h),'cl-hint');
+            return;
+        }
+        const expected=game.question.id.toLowerCase().replace(/_/g,' ');
+        let acceptable=[expected,...(game.question.misspellings||[]).map(s=>s.toLowerCase())];
+        // General "weathering" also accepts specific weathering subtypes and their misspellings
+        if(game.question.id==='weathering'){
+            ['chemical_weathering','physical_mechanical_weathering'].forEach(id=>{
+                const p=game.processes.find(x=>x.id===id);
+                if(p){
+                    acceptable.push(id.replace(/_/g,' '));
+                    (p.misspellings||[]).forEach(s=>acceptable.push(s.toLowerCase()));
+                }
+            });
+        }
+        if (acceptable.includes(val.toLowerCase())) {
+            // Keep inDialog=true so update() cannot re-trigger openDialog()
+            // while the "well done" message plays and the door fades.
+            game.correctPending=true;
+            qGremlin('THE DOOR GRINDS OPEN... WELL DONE, '+game.playerName+'!','cl-correct');
+            setTimeout(()=>{
+                convoWrap.classList.remove('show'); clearConvo();
+                game.doorFading=true; game.doorFadeAlpha=1;
+            },1800);
+            return;
+        }
+        dlg.attempts++;
+        if(isCloseAnswer(val,expected)){
+            qGremlin(`oooo.  sooo close.  but I'm not kind enough to accept that answer - I work for the bureaucracy, ${game.playerName} you see.`,'cl-wrong');
+        } else {
+            qGremlin(`"${val}" - WRONG! [sneers.]`,'cl-wrong');
+        }
+        if (dlg.attempts>=6) {
+            dlg.state='offer_answer';
+            qGremlin('i see you are struggling!  DO YOU WANT THE ANSWER? (YES or NO)','');
+        } else {
+            const left=6-dlg.attempts;
+            qGremlin(`${left} guess${left===1?'':'es'} left before the gremlin takes pity.  Type an answer or HINT.`,'cl-hud');
+        }
+        return;
+    }
+
+    if (dlg.state==='offer_answer') {
+        if (isYes(val)) {
+            if (game.passes<=0) {
+                qGremlin('YOU HAVE NO PASSES LEFT!  THE TUNNEL IS YOUR HOME NOW!','');
+                qGremlin('Keep guessing, or type HINT for clues.','cl-hud');
+                dlg.state='riddle'; dlg.attempts=0; return;
+            }
+            const answer=game.question.id.replace(/_/g,' ').toUpperCase();
+            qGremlin('THE ANSWER IS: '+answer,'cl-sys');
+            setTimeout(givePass,1200);
+            return;
+        }
+        if (isNo(val)) {
+            dlg.state='offer_hints';
+            qGremlin('MORE HINTS, THEN?  (YES or NO)',''); return;
+        }
+        qGremlin('Please type YES or NO.','cl-note'); return;
+    }
+
+    if (dlg.state==='offer_hints') {
+        if (isYes(val)) {
+            dlg.state='riddle'; dlg.attempts=0;
+            const count=Math.min(5,dlg.hintPool.length-dlg.hintIdx);
+            if (count===0) { qGremlin('i have NO MORE HINTS!  THINK HARDER!',''); }
+            else {
+                qGremlin(`VERY WELL!  HERE ARE ${count} MORE HINTS:`,'');
+                for (let i=0;i<count;i++) { const h=nextHint(); if(h) qGremlin(fmtHint(h),'cl-hint'); }
+            }
+            qGremlin('Type your answer - or HINT for more clues.','cl-hud'); return;
+        }
+        if (isNo(val)) {
+            dlg.state='riddle'; dlg.attempts=0;
+            qGremlin('then keep TRYING!  The door will not open itself!',''); return;
+        }
+        qGremlin('Please type YES or NO.','cl-note'); return;
+    }
+}
+
+// ═══════════════════════════════════════════════════════
+//  PERSPECTIVE
+// ═══════════════════════════════════════════════════════
+function pScale(d){return d<=0?10:FOCAL/(FOCAL+d);}
+function pRect(d){
+    const W=canvas.width,H=canvas.height,s=pScale(Math.max(d,0));
+    return{x:W/2-W*s/2,y:H/2-H*s/2,w:W*s,h:H*s,s};
+}
+
+// ═══════════════════════════════════════════════════════
+//  LIGHTING HELPER
+//  d  = depth (scene units)   maxL = HSL L at depth 0
+//  tp = torchPct (0-1, pre-multiplied with flicker)
+//  Gradient t for depth d on any face: t = d/(FOCAL+d)
+//  Threshold at TORCH_DEPTH → t_thresh = TORCH_DEPTH/(FOCAL+TORCH_DEPTH)
+// ═══════════════════════════════════════════════════════
+function wallL(d,maxL,tp){
+    if(d>=TORCH_DEPTH)return 0;
+    // sqrt curve: rises steeply as d crosses below TORCH_DEPTH
+    return Math.sqrt(1-d/TORCH_DEPTH)*maxL*tp;
+}
+
+// ═══════════════════════════════════════════════════════
+//  DRAW TUNNEL
+// ═══════════════════════════════════════════════════════
+function drawTunnel(){
+    const W=canvas.width,H=canvas.height,cx=W/2,cy=H/2;
+
+    // ── flicker update - slow, subtle ───────────────
+    const flickTarget=Math.random()<0.008
+        ?0.72+Math.random()*0.14   // rare, gentle dip
+        :0.93+Math.random()*0.07;
+    game.flicker=game.flicker*0.97+flickTarget*0.03;
+    const tp=(game.torch/TORCH_MAX)*game.flicker;
+
+    // ── depth samples clustered around TORCH_DEPTH ─
+    // t = d/(FOCAL+d)  →  t_thresh ≈ 350/670 ≈ 0.522
+    // Tight cluster near threshold forces a hard dark boundary
+    const DS=[0,65,145,220,285,315,335,348,358,368,500];
+
+    function bld(grd,h,s,maxL){
+        DS.forEach(d=>{
+            const t=d/(FOCAL+d);
+            grd.addColorStop(Math.min(t,0.998),
+                `hsl(${h},${s}%,${wallL(d,maxL,tp).toFixed(1)}%)`);
+        });
+        grd.addColorStop(1,'hsl(0,0%,0%)');
+    }
+
+    const pal=game.tunnelPalette||genTunnelPalette();
+
+    ctx.fillStyle='#000';ctx.fillRect(0,0,W,H);
+
+    // Ceiling
+    const cg=ctx.createLinearGradient(cx,0,cx,cy);
+    bld(cg,pal.ceilH,pal.ceilS,pal.ceilL);
+    ctx.fillStyle=cg;
+    ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(W,0);ctx.lineTo(cx,cy);ctx.closePath();ctx.fill();
+
+    // Floor
+    const fg=ctx.createLinearGradient(cx,H,cx,cy);
+    bld(fg,pal.floorH,pal.floorS,pal.floorL);
+    ctx.fillStyle=fg;
+    ctx.beginPath();ctx.moveTo(0,H);ctx.lineTo(W,H);ctx.lineTo(cx,cy);ctx.closePath();ctx.fill();
+
+    // Left wall
+    const lg=ctx.createLinearGradient(0,cy,cx,cy);
+    bld(lg,pal.wallH,pal.wallS,pal.wallL);
+    ctx.fillStyle=lg;
+    ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(0,H);ctx.lineTo(cx,cy);ctx.closePath();ctx.fill();
+
+    // Right wall
+    const rg=ctx.createLinearGradient(W,cy,cx,cy);
+    bld(rg,pal.wallH,pal.wallS,pal.wallL);
+    ctx.fillStyle=rg;
+    ctx.beginPath();ctx.moveTo(W,0);ctx.lineTo(W,H);ctx.lineTo(cx,cy);ctx.closePath();ctx.fill();
+
+    // Face-division lines
+    const lineDS=[0,65,145,230,295,325,342,364,500];
+    ctx.lineWidth=1;
+    for(let i=1;i<8;i++){
+        const t=i/8;
+        for(const [x0,y0] of[[0,H/2*t],[W,H/2*t],[W*t*0.5,H],[W-W*t*0.5,H]]){
+            const g=ctx.createLinearGradient(x0,y0,cx,cy);
+            lineDS.forEach(d=>{
+                const gt=d/(FOCAL+d);
+                g.addColorStop(Math.min(gt,0.998),`hsl(${pal.lineH},${pal.lineS.toFixed(0)}%,${wallL(d,20,tp).toFixed(1)}%)`);
+            });
+            g.addColorStop(1,'#000');
+            ctx.strokeStyle=g;
+            ctx.beginPath();ctx.moveTo(x0,y0);ctx.lineTo(cx,cy);ctx.stroke();
+        }
+    }
+
+    // Perspective rings - skip rings beyond torch range
+    const first=RING_SPACING-(game.pos%RING_SPACING);
+    for(let i=0;i<18;i++){
+        const depth=first+i*RING_SPACING;
+        if(depth>FOCAL*4)break;
+        const r=pRect(depth);
+        const ringL=wallL(depth,52,tp);
+        if(ringL<0.3)continue;
+        ctx.strokeStyle=`hsl(30,35%,${ringL.toFixed(1)}%)`;ctx.lineWidth=1;
+        ctx.strokeRect(r.x,r.y,r.w,r.h);
+        const tl=Math.min(r.w,r.h)*0.04;
+        ctx.beginPath();
+        ctx.moveTo(r.x+tl,r.y);ctx.lineTo(r.x,r.y);ctx.lineTo(r.x,r.y+tl);
+        ctx.moveTo(r.x+r.w-tl,r.y);ctx.lineTo(r.x+r.w,r.y);ctx.lineTo(r.x+r.w,r.y+tl);
+        ctx.moveTo(r.x+tl,r.y+r.h);ctx.lineTo(r.x,r.y+r.h);ctx.lineTo(r.x,r.y+r.h-tl);
+        ctx.moveTo(r.x+r.w-tl,r.y+r.h);ctx.lineTo(r.x+r.w,r.y+r.h);ctx.lineTo(r.x+r.w,r.y+r.h-tl);
+        ctx.stroke();
+    }
+
+    // Rocky floor - persistent world-space rocks, only top halves shown
+    if(game.floorRocks&&game.floorRocks.length){
+        for(const rock of game.floorRocks){
+            const depth=rock.z-game.pos;
+            if(depth<=0||depth>TORCH_DEPTH*1.05)continue;
+            const r=pRect(depth);
+            const floorY=r.y+r.h;
+            const pL=wallL(depth,36,tp);
+            if(pL<0.5)continue;
+            const px=r.x+r.w*rock.fx;
+            const rw=r.h*rock.rwFrac;
+            const rh=rw*rock.rhRatio;
+            const lv=pL*(0.52+0.36*((rock.s2+1)*0.5));
+            ctx.save();
+            ctx.beginPath();ctx.rect(0,0,canvas.width,floorY);ctx.clip();
+            ctx.fillStyle=`hsl(${pal.floorH+rock.s1*10},${Math.max(4,pal.floorS*0.44).toFixed(0)}%,${lv.toFixed(1)}%)`;
+            ctx.beginPath();ctx.ellipse(px,floorY,rw,rh,rock.ang,0,Math.PI*2);ctx.fill();
+            ctx.fillStyle=`hsl(${pal.floorH},${Math.max(2,pal.floorS*0.22).toFixed(0)}%,${(lv*1.3).toFixed(1)}%)`;
+            ctx.beginPath();ctx.ellipse(px-rw*0.18,floorY-rh*0.3,rw*0.36,rh*0.30,rock.ang-0.3,0,Math.PI*2);ctx.fill();
+            ctx.restore();
+        }
+    }
+
+    // Torch glow (warm radial - torch bearer at bottom-center)
+    const tg=ctx.createRadialGradient(cx,H*0.82,4,cx,H*0.45,W*0.9);
+    tg.addColorStop(0,`rgba(255,150,25,${0.28*tp})`);
+    tg.addColorStop(0.3,`rgba(200,85,8,${0.16*tp})`);
+    tg.addColorStop(0.65,`rgba(130,35,0,${0.07*tp})`);
+    tg.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=tg;ctx.fillRect(0,0,W,H);
+
+    // Centre blackout - four triangles matching the tunnel rect at TORCH_DEPTH
+    // Each fades from transparent at the rect boundary to black at (cx,cy)
+    const rb=pRect(TORCH_DEPTH);
+    const rx=rb.x,ry=rb.y,rr=rb.x+rb.w,rb2=rb.y+rb.h;
+    [
+        [rx,ry, rr,ry,    cx,ry,  cx,cy ],  // top face
+        [rx,rb2,rr,rb2,   cx,rb2, cx,cy ],  // bottom face
+        [rx,ry, rx,rb2,   rx,cy,  cx,cy ],  // left face
+        [rr,ry, rr,rb2,   rr,cy,  cx,cy ],  // right face
+    ].forEach(([x1,y1,x2,y2,gx1,gy1,gx2,gy2])=>{
+        const g=ctx.createLinearGradient(gx1,gy1,gx2,gy2);
+        g.addColorStop(0,'rgba(0,0,0,0)');
+        g.addColorStop(0.5,'rgba(0,0,0,0.80)');
+        g.addColorStop(1,'rgba(0,0,0,1)');
+        ctx.fillStyle=g;
+        ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.lineTo(cx,cy);ctx.closePath();ctx.fill();
+    });
+
+    // Screen-edge vignette
+    const vigDark=0.28+(1-tp)*0.38;
+    const vg=ctx.createRadialGradient(cx,cy,W*0.38,cx,cy,W*0.84);
+    vg.addColorStop(0,'rgba(0,0,0,0)');
+    vg.addColorStop(1,`rgba(0,0,0,${vigDark})`);
+    ctx.fillStyle=vg;ctx.fillRect(0,0,W,H);
+}
+
+// ═══════════════════════════════════════════════════════
+//  DRAW DOORS
+// ═══════════════════════════════════════════════════════
+function archPath(cx,bY,hw,archH){
+    ctx.beginPath();
+    ctx.moveTo(cx-hw,bY);ctx.lineTo(cx-hw,bY-archH);
+    ctx.arc(cx,bY-archH,hw,Math.PI,0,false);
+    ctx.lineTo(cx+hw,bY);ctx.closePath();
+}
+
+function drawDoors(){
+    if(game.exitPos)return; // exit replaces all doors
+    const W=canvas.width,H=canvas.height,cx=W/2;
+    for(let n=game.doorIndex+2;n>=game.doorIndex;n--){
+        const depth=(game.doorPositions[n]||( (n+1)*DOOR_SPACING ))-game.pos;
+        if(depth>FOCAL*4||depth<-20)continue;
+        const isFading=game.doorFading&&n===game.doorIndex;
+        if(isFading){ctx.save();ctx.globalAlpha=game.doorFadeAlpha;}
+        const r=pRect(Math.max(depth,1));
+        const tp=(game.torch/TORCH_MAX)*game.flicker;
+        const d0=Math.max(depth,0);
+        const fL=wallL(d0,36,tp);   // face lightness
+        const sg=ctx.createLinearGradient(r.x,r.y,r.x+r.w,r.y+r.h);
+        sg.addColorStop(0,  `hsl(28,36%,${(fL*0.82).toFixed(1)}%)`);
+        sg.addColorStop(0.3,`hsl(28,40%,${fL.toFixed(1)}%)`);
+        sg.addColorStop(0.7,`hsl(28,36%,${(fL*0.88).toFixed(1)}%)`);
+        sg.addColorStop(1,  `hsl(28,30%,${(fL*0.60).toFixed(1)}%)`);
+        ctx.fillStyle=sg;ctx.fillRect(r.x,r.y,r.w,r.h);
+        const rows=6,cols=4,bh=r.h/rows,bw=r.w/cols;
+        const brickA=fL>0.5?Math.min(fL/36*0.68,0.68):0;
+        ctx.save();ctx.beginPath();ctx.rect(r.x,r.y,r.w,r.h);ctx.clip();
+        ctx.strokeStyle=`rgba(12,6,2,${brickA.toFixed(2)})`;ctx.lineWidth=Math.max(1,r.w*0.008);
+        for(let row=0;row<=rows;row++){
+            const by=r.y+row*bh,off=(row%2)*bw*0.5;
+            ctx.beginPath();ctx.moveTo(r.x,by);ctx.lineTo(r.x+r.w,by);ctx.stroke();
+            for(let col=-1;col<cols+1;col++){
+                const bx=r.x+col*bw+off;
+                ctx.beginPath();ctx.moveTo(bx,by);ctx.lineTo(bx,by+bh);ctx.stroke();
+            }
+        }
+        ctx.restore();
+        const edgeA=fL>0?Math.min(fL/36*0.22,0.22):0;
+        ctx.strokeStyle=`rgba(160,110,60,${edgeA.toFixed(2)})`;ctx.lineWidth=2;ctx.strokeRect(r.x,r.y,r.w,r.h);
+        const hw=r.w*0.17,archH=r.h*0.52,bY=r.y+r.h;
+        const isActive=n===game.doorIndex;
+        ctx.fillStyle='#010101';archPath(cx,bY,hw,archH);ctx.fill();
+        ctx.save();archPath(cx,bY,hw,archH);ctx.clip();
+        const woodL=wallL(d0,24,tp);
+        const dg=ctx.createLinearGradient(cx-hw,bY-archH-hw,cx+hw,bY);
+        dg.addColorStop(0,  `hsl(22,62%,${(woodL*0.68).toFixed(1)}%)`);
+        dg.addColorStop(0.3,`hsl(22,68%,${woodL.toFixed(1)}%)`);
+        dg.addColorStop(0.55,`hsl(22,64%,${(woodL*0.88).toFixed(1)}%)`);
+        dg.addColorStop(0.8,`hsl(22,58%,${(woodL*0.68).toFixed(1)}%)`);
+        dg.addColorStop(1,  `hsl(22,52%,${(woodL*0.50).toFixed(1)}%)`);
+        ctx.fillStyle=dg;ctx.fillRect(cx-hw,bY-archH-hw,hw*2,archH+hw*1.2);
+        const plankA=woodL>0.5?Math.min(woodL/24*0.65,0.65):0;
+        ctx.strokeStyle=`rgba(10,4,1,${plankA.toFixed(2)})`;ctx.lineWidth=Math.max(1,hw*0.045);
+        const plankH=archH/5;
+        for(let p=1;p<5;p++){const py=bY-archH+p*plankH;ctx.beginPath();ctx.moveTo(cx-hw,py);ctx.lineTo(cx+hw,py);ctx.stroke();}
+        const strapH=Math.max(2,hw*0.09);
+        [0.28,0.68].forEach(t=>{
+            const sy=bY-archH+archH*t-strapH/2;
+            ctx.fillStyle='#141414';ctx.fillRect(cx-hw,sy,hw*2,strapH);
+            ctx.fillStyle='#1e1e1e';
+            [-0.75,-0.35,0,0.35,0.75].forEach(rx=>{ctx.beginPath();ctx.arc(cx+hw*rx,sy+strapH/2,Math.max(1,hw*0.035),0,Math.PI*2);ctx.fill();});
+            ctx.strokeStyle='#0a0a0a';ctx.lineWidth=1;ctx.strokeRect(cx-hw,sy,hw*2,strapH);
+        });
+        ctx.strokeStyle='rgba(10,4,1,0.8)';ctx.lineWidth=Math.max(1,hw*0.03);
+        ctx.beginPath();ctx.moveTo(cx,bY-archH);ctx.lineTo(cx,bY+2);ctx.stroke();
+        ctx.restore();
+        const grateW=hw*1.0,grateH=archH*0.21,grateX=cx-grateW/2,grateY=bY-archH*0.82;
+        ctx.fillStyle='#0e0e0e';ctx.fillRect(grateX-hw*0.04,grateY-hw*0.04,grateW+hw*0.08,grateH+hw*0.08);
+        ctx.fillStyle='#040202';ctx.fillRect(grateX,grateY,grateW,grateH);
+        const vBars=6,barW=Math.max(1.5,hw*0.032);
+        ctx.fillStyle='#1a1a1a';
+        for(let b=0;b<=vBars;b++){
+            const bx=grateX+grateW/vBars*b-barW/2;
+            ctx.fillRect(bx,grateY,barW,grateH);
+            ctx.fillStyle='rgba(70,70,70,0.25)';ctx.fillRect(bx,grateY,barW*0.3,grateH);
+            ctx.fillStyle='#1a1a1a';
+        }
+        const hBarH=Math.max(1.5,hw*0.028);
+        ctx.fillStyle='#1a1a1a';
+        [0.33,0.67].forEach(t=>{
+            const gy=grateY+grateH*t-hBarH/2;
+            ctx.fillRect(grateX,gy,grateW,hBarH);
+            ctx.fillStyle='rgba(70,70,70,0.2)';ctx.fillRect(grateX,gy,grateW,hBarH*0.4);
+            ctx.fillStyle='#1a1a1a';
+        });
+        ctx.strokeStyle='#111';ctx.lineWidth=Math.max(2,hw*0.06);ctx.strokeRect(grateX,grateY,grateW,grateH);
+        if(game.inDialog&&isActive){
+            const eyeY=grateY+grateH*0.5,eyeR=grateH*0.24,eyeSep=grateW*0.2;
+            const hue=game.doorEyeHues[n]??60;
+            const eyeFill=`hsl(${hue},100%,62%)`;
+            const eyeGlow=`hsl(${hue},100%,50%)`;
+            ctx.save();ctx.rect(grateX,grateY,grateW,grateH);ctx.clip();
+            ctx.shadowColor=eyeGlow;ctx.shadowBlur=14;ctx.fillStyle=eyeFill;
+            for(const ex of[cx-eyeSep,cx+eyeSep]){ctx.beginPath();ctx.ellipse(ex,eyeY,eyeR*0.85,eyeR,0,0,Math.PI*2);ctx.fill();}
+            ctx.shadowBlur=0;ctx.fillStyle='#050300';
+            for(const ex of[cx-eyeSep,cx+eyeSep]){ctx.beginPath();ctx.ellipse(ex,eyeY,eyeR*0.38,eyeR*0.55,0,0,Math.PI*2);ctx.fill();}
+            ctx.restore();
+        }
+        const hx=cx+hw*0.55,hy=bY-archH*0.44;
+        const bailW=Math.max(3,hw*0.18),bailR=Math.max(2,hw*0.11),plateH=Math.max(2,hw*0.08);
+        ctx.fillStyle='#141414';ctx.fillRect(hx-bailW/2,hy-plateH,bailW,plateH*1.4);
+        ctx.strokeStyle='#222';ctx.lineWidth=1;ctx.strokeRect(hx-bailW/2,hy-plateH,bailW,plateH*1.4);
+        ctx.fillStyle='#1c1c1c';
+        [[-0.35,-0.5],[0.35,-0.5]].forEach(([dx,dy])=>{ctx.beginPath();ctx.arc(hx+bailW*dx,hy+plateH*dy,Math.max(1,hw*0.022),0,Math.PI*2);ctx.fill();});
+        ctx.strokeStyle='#202020';ctx.lineWidth=Math.max(2,hw*0.042);
+        ctx.beginPath();ctx.moveTo(hx-bailW/2,hy);ctx.lineTo(hx-bailW/2,hy+bailR*0.7);
+        ctx.arc(hx,hy+bailR*0.7,bailW/2,Math.PI,0,false);ctx.lineTo(hx+bailW/2,hy);ctx.stroke();
+        ctx.strokeStyle='rgba(90,90,90,0.28)';ctx.lineWidth=Math.max(1,hw*0.014);
+        ctx.beginPath();ctx.arc(hx-bailW*0.12,hy+bailR*0.45,bailW*0.38,Math.PI*0.85,Math.PI*1.3,false);ctx.stroke();
+        const archMaxL=isActive&&!game.inDialog?58:28;
+        const archH2=isActive&&!game.inDialog?42:26;
+        const archL=wallL(d0,archMaxL,tp);
+        const col=`hsl(${isActive&&!game.inDialog?44:28},${archH2}%,${archL.toFixed(1)}%)`;
+        const lw=Math.max(2,r.w*0.016);
+        ctx.strokeStyle=col;ctx.lineWidth=lw;archPath(cx,bY,hw,archH);ctx.stroke();
+        ctx.fillStyle=col;ctx.globalAlpha=0.5;
+        ctx.fillRect(cx-hw*0.12,bY-archH-hw-lw,hw*0.24,hw*0.22);ctx.globalAlpha=1;
+        if(isFading) ctx.restore();
+    }
+}
+
+// ═══════════════════════════════════════════════════════
+//  FADE TO BLACK
+// ═══════════════════════════════════════════════════════
+function drawFade(){
+    if(game.fadeAlpha<=0)return;
+    const W=canvas.width,H=canvas.height,cx=W/2,cy=H/2;
+    ctx.fillStyle=`rgba(0,0,0,${game.fadeAlpha})`;ctx.fillRect(0,0,W,H);
+    if(game.fadeAlpha>0.75&&game.fadeMsg){
+        const lines=game.fadeMsg.split('\n');
+        ctx.save();ctx.textAlign='center';ctx.textBaseline='middle';
+        ctx.globalAlpha=Math.min((game.fadeAlpha-0.75)/0.25,1);
+        const lh=28,startY=cy-lines.length*lh/2+lh/2;
+        lines.forEach((line,i)=>{
+            ctx.font=i===0?'bold 16px Courier New':'13px Courier New';
+            ctx.fillStyle=i===0?'#ffdd55':'#cc9944';
+            ctx.fillText(line,cx,startY+i*lh);
+        });
+        ctx.restore();
+    }
+}
+let fadeHoldTimer=null;
+function stepFade(){
+    if(game.fadeDir===0)return;
+    if(game.fadeDir===1){
+        game.fadeAlpha=Math.min(1,game.fadeAlpha+0.018);
+        if(game.fadeAlpha>=1){
+            game.fadeDir=0;
+            fadeHoldTimer=setTimeout(()=>{game.fadeDir=-1;if(game.fadeCallback){game.fadeCallback();game.fadeCallback=null;}},2800);
+        }
+    } else {
+        game.fadeAlpha=Math.max(0,game.fadeAlpha-0.018);
+        if(game.fadeAlpha<=0){game.fadeDir=0;game.fadeMsg='';}
+    }
+}
+
+// ═══════════════════════════════════════════════════════
+//  UPDATE
+// ═══════════════════════════════════════════════════════
+function showPaper(){
+    game.paperShowing=true;
+    const collected=game.paperCollected;
+    // Populate list once (idempotent)
+    const list=document.getElementById('paperList');
+    if(!list.children.length){
+        game.processes.forEach(p=>{
+            const li=document.createElement('li');
+            li.textContent=p.id.replace(/_/g,' ');
+            list.appendChild(li);
+        });
+    }
+    document.getElementById('paperPrompt').textContent=
+        collected?'[ press enter or esc to close ]':'[ press enter to add to inventory ]';
+    document.getElementById('paperOverlay').classList.add('active');
+}
+function hidePaper(){
+    game.paperShowing=false;
+    document.getElementById('paperOverlay').classList.remove('active');
+}
+function collectPaper(){
+    game.paperCollected=true;
+    game.paperInHallway=false;
+    localStorage.setItem('doom_paper','1');
+    hidePaper();
+}
+
+function update(){
+    if(game.gameOver||appScreen!=='game')return;
+    if(game.paperShowing)return;
+    if(game.exitShowing)return;
+    if(game.greetingActive)return;
+    stepFade();
+    if(game.doorFading){
+        game.doorFadeAlpha=Math.max(0,game.doorFadeAlpha-0.018);
+        if(game.doorFadeAlpha<=0){
+            game.doorFading=false; game.doorFadeAlpha=1;
+            game.doorsOpen++; game.doorIndex++;
+            game.inDialog=false; game.correctPending=false;
+            game.tunnelPalette=genTunnelPalette();
+            // Place wall torch midway between door 10 and door 11
+            if(game.doorsOpen===10&&!game.wallTorchPos){
+                game.wallTorchPos=game.pos+360;
+            }
+            // All processes beaten - set exit ahead instead of more doors
+            if(game.doorsOpen>=game.processes.length){
+                game.exitPos=game.pos+480;
+            } else {
+                while(game.doorPositions.length<=game.doorIndex+2){
+                    const last=game.doorPositions[game.doorPositions.length-1]||0;
+                    game.doorPositions.push(genDoorPos(last));
+                    game.doorEyeHues.push(Math.random()*360|0);
+                }
+                // Maybe scatter a paper in the newly extended hallway
+                const _d1=game.doorPositions[game.doorIndex+1];
+                const _d2=game.doorPositions[game.doorIndex+2];
+                if(_d1&&_d2&&Math.random()<0.4){
+                    const _pos=_d1+(_d2-_d1)*(0.3+Math.random()*0.4);
+                    const _proc=game.processes[Math.floor(Math.random()*game.processes.length)];
+                    game.hallwayPapers.push({pos:_pos,name:_proc.id.replace(/_/g,' '),collected:false});
+                }
+            }
+        }
+    }
+    // Slip paper early-exit
+    if(game.slipShowing) return;
+    // Side passage active — block all movement, drain slowly
+    if(game.sidePassageActive) return;
+    // Side passage proximity
+    if(game.sidePassagePos&&!game.inDialog&&!game.sidePassageActive&&!game.sidePassageVisited){
+        const _rel=game.sidePassagePos-game.pos;
+        game.sidePassageNear=_rel>0&&_rel<220;
+    } else { game.sidePassageNear=false; }
+    // Torch only drains before the exit is visible (pause during paper reading)
+    if(!game.exitPos&&!game.slipShowing){
+        game.torch-=game.inDialog?TORCH_WAIT:TORCH_WALK;
+        if(game.torch<=0){game.torch=0;endGame(true);return;}
+    }
+    // Paper pickup trigger
+    if(game.paperInHallway&&!game.paperCollected&&!game.inDialog&&
+       game.fadeDir===0&&game.fadeAlpha===0&&game.pos>=PAPER_POS){
+        showPaper(); return;
+    }
+    // Wall torch proximity (auto-show/hide prompt)
+    if(game.wallTorchPos&&!game.wallTorchCollected){
+        const rel=game.wallTorchPos-game.pos;
+        game.wallTorchShowing=(rel>0&&rel<200&&!game.inDialog&&!game.exitShowing);
+    }
+    // Exit trigger
+    if(game.exitPos&&!game.exitShowing&&game.pos>=game.exitPos){
+        game.exitShowing=true;
+        game.exitStartTime=Date.now();
+        convoWrap.classList.remove('show');
+        showPlayerInput(false);
+        return;
+    }
+    // Door dialog (only when exit not pending)
+    if(!game.exitPos){
+        const nextDoor=game.doorPositions[game.doorIndex]||((game.doorIndex+1)*DOOR_SPACING);
+        if(!game.inDialog&&!game.doorFading&&game.fadeDir===0&&game.fadeAlpha===0&&game.pos>=nextDoor){
+            game.pos=nextDoor;openDialog();
+        }
+    }
+}
+
+function endGame(outOfTorch){
+    game.gameOver=true;
+    const prev=parseInt(localStorage.getItem('doom_losses')||'0');
+    localStorage.setItem('doom_losses', prev+1);
+    convoWrap.classList.remove('show');
+    showPlayerInput(false);
+    document.getElementById('goTitle').innerHTML=outOfTorch
+        ?'<span style="color:#ff3322">** your torch is out - there is no escape **</span>'
+        :'<span style="color:#44ff88">YOU ESCAPED!</span>';
+    document.getElementById('goStats').innerHTML=
+        `${game.playerName} - Distance: ${Math.floor(game.pos)}<br>Doors unlocked: ${game.doorsOpen}<br>Passes used: ${MAX_PASSES-game.passes}`;
+    document.getElementById('gameOver').classList.add('active');
+}
+
+// ═══════════════════════════════════════════════════════
+//  DRAW HUD  (rendered on canvas)
+// ═══════════════════════════════════════════════════════
+function drawHUD(){
+    if(appScreen!=='game'||game.exitShowing)return;
+    const W=canvas.width,H=canvas.height;
+
+    // ── top dialog bar (visible during gremlin interaction) ─────────────
+    if(game.inDialog&&dlg.state==='riddle'){
+        const TH=32;
+        ctx.fillStyle='rgba(0,0,0,0.88)';
+        ctx.fillRect(0,0,W,TH);
+        ctx.strokeStyle='#553300';ctx.lineWidth=1;
+        ctx.beginPath();ctx.moveTo(0,TH);ctx.lineTo(W,TH);ctx.stroke();
+        ctx.font=`bold 13px 'Courier New', monospace`;
+        ctx.textBaseline='middle';
+        const tmid=TH/2;
+        const guessesLeft=Math.max(0,6-dlg.attempts);
+
+        // left: GUESSES label + number
+        ctx.textAlign='left';
+        ctx.fillStyle='#665544';
+        ctx.fillText('GUESSES:',12,tmid);
+        ctx.fillStyle=guessesLeft<=2?'#ff5533':guessesLeft<=4?'#ffaa44':'#aaddaa';
+        ctx.fillText(String(guessesLeft),90,tmid);
+
+        // right: "type HINT for a clue" - mixed colour, left-to-right from computed start
+        const parts=[
+            {t:'type ',    c:'#554433'},
+            {t:'HINT',     c:'#ffcc55'},
+            {t:'  for a clue', c:'#554433'},
+        ];
+        const totalW=parts.reduce((s,p)=>s+ctx.measureText(p.t).width,0);
+        let rx=W-12-totalW;
+        parts.forEach(p=>{
+            ctx.fillStyle=p.c;
+            ctx.textAlign='left';
+            ctx.fillText(p.t,rx,tmid);
+            rx+=ctx.measureText(p.t).width;
+        });
+    }
+
+    const HH=40, y=H-HH;
+
+    // background + border
+    ctx.fillStyle='rgba(0,0,0,0.90)';
+    ctx.fillRect(0,y,W,HH);
+    ctx.strokeStyle='#553300';ctx.lineWidth=2;
+    ctx.beginPath();ctx.moveTo(0,y+1);ctx.lineTo(W,y+1);ctx.stroke();
+
+    const mid=y+HH/2;
+    ctx.textBaseline='middle';
+    ctx.font=`bold 14px 'Courier New', monospace`;
+
+    // Torch label
+    ctx.fillStyle='#aa7733';
+    ctx.textAlign='left';
+    ctx.fillText('TORCH',14,mid);
+
+    // Torch bar
+    const labelW=76, pad=10;
+    // Reserve right side: three fixed-width columns, each 110px wide
+    const colW=110, cols=3, rightW=colW*cols+pad;
+    const barX=labelW+pad, barW=W-labelW-rightW-pad*2, barH=14;
+    const barY=mid-barH/2;
+    const ratio=game.torch/TORCH_MAX;
+    ctx.fillStyle='#1a1008';ctx.fillRect(barX,barY,barW,barH);
+    ctx.strokeStyle='#6a4a22';ctx.lineWidth=1;ctx.strokeRect(barX,barY,barW,barH);
+    ctx.fillStyle=ratio>0.5?'#ffaa00':ratio>0.25?'#ff6a00':'#ff2200';
+    ctx.fillRect(barX+1,barY+1,Math.max(0,(barW-2)*ratio),barH-2);
+
+    // Right stats - each column: dim label left, unique-color value right
+    const stats=[
+        {label:'PASSES', val:String(game.passes).padStart(3,' '),          valColor:'#ff9944'},
+        {label:'DOORS',  val:String(game.doorsOpen).padStart(3,' '),       valColor:'#44dd88'},
+        {label:'DEPTH',  val:String(Math.floor(game.pos)).padStart(6,' '), valColor:'#55bbff'},
+    ];
+    stats.forEach((s,i)=>{
+        const rx=W-pad-(cols-1-i)*colW-colW;
+        // dim separator before each column
+        ctx.strokeStyle='#3a2810'; ctx.lineWidth=1;
+        ctx.beginPath(); ctx.moveTo(rx-6,y+6); ctx.lineTo(rx-6,y+HH-6); ctx.stroke();
+        // label dimmed
+        ctx.textAlign='left';
+        ctx.fillStyle='#665533';
+        ctx.fillText(s.label,rx+2,mid);
+        // value in its own distinct color
+        ctx.fillStyle=s.valColor;
+        ctx.textAlign='right';
+        ctx.fillText(s.val,rx+colW-6,mid);
+    });
+}
+
+// ═══════════════════════════════════════════════════════
+//  HALLWAY SLIP PAPERS
+// ═══════════════════════════════════════════════════════
+function showSlip(idx){
+    const slip=game.hallwayPapers[idx];
+    game.slipShowing=true; game.slipPhase='read'; game.slipIdx=idx;
+    document.getElementById('slipName').textContent=slip.name.toUpperCase();
+    document.getElementById('slipMsg').textContent='better write this down.';
+    document.getElementById('slipAction').textContent='[ press enter ]';
+    document.getElementById('slipPaper').classList.remove('crumble');
+    document.getElementById('slipOverlay').classList.add('active');
+}
+function advanceSlip(){
+    if(game.slipPhase==='read'){
+        game.slipPhase='crumble';
+        document.getElementById('slipPaper').classList.add('crumble');
+        document.getElementById('slipName').textContent='';
+        document.getElementById('slipMsg').textContent='[ paper crumbles in your hands ]';
+        document.getElementById('slipAction').textContent='[ press enter to continue ]';
+    } else {
+        game.hallwayPapers[game.slipIdx].collected=true;
+        game.slipShowing=false; game.slipIdx=-1;
+        document.getElementById('slipOverlay').classList.remove('active');
+    }
+}
+
+function drawHallwaySlips(){
+    if(appScreen!=='game'||game.exitShowing)return;
+    const W=canvas.width,H=canvas.height,cx=W/2,cy=H/2;
+    let nearIdx=-1;
+    game.hallwayPapers.forEach((slip,idx)=>{
+        if(slip.collected)return;
+        const relDepth=slip.pos-game.pos;
+        if(relDepth<=0||relDepth>=TORCH_DEPTH)return;
+        const s=pScale(relDepth);
+        const vis=Math.min(1,(TORCH_DEPTH-relDepth)/(TORCH_DEPTH*0.55));
+        const r=pRect(relDepth);
+        const floorY=r.y+r.h;
+        const pw=30*s, ph=18*s;
+        const px=cx+pw*0.15; // slightly right of center
+        const py=floorY-ph*0.55;
+        ctx.save();
+        ctx.globalAlpha=vis;
+        ctx.translate(px,py);ctx.rotate(0.18);
+        ctx.fillStyle='#f2e8cc';ctx.fillRect(-pw/2,-ph/2,pw,ph);
+        // ruled lines suggesting text
+        ctx.strokeStyle='rgba(80,50,15,0.35)';ctx.lineWidth=Math.max(0.5,ph*0.09);
+        for(let ln=1;ln<=2;ln++){
+            const ly=-ph/2+ph*(ln/3);
+            ctx.beginPath();ctx.moveTo(-pw/2+pw*0.1,ly);ctx.lineTo(pw/2-pw*0.08,ly);ctx.stroke();
+        }
+        ctx.restore();
+        if(relDepth<180&&!game.inDialog&&!game.slipShowing) nearIdx=idx;
+    });
+    game.slipNearbyIdx=nearIdx;
+
+    // Proximity prompt
+    if(game.slipNearbyIdx>=0&&!game.slipShowing){
+        const boxH=48,boxY=H-44-boxH;
+        ctx.fillStyle='rgba(0,0,0,0.88)';ctx.fillRect(0,boxY,W,boxH);
+        ctx.strokeStyle='#553300';ctx.lineWidth=1;
+        ctx.beginPath();ctx.moveTo(0,boxY+1);ctx.lineTo(W,boxY+1);ctx.stroke();
+        ctx.textAlign='center';ctx.textBaseline='middle';
+        ctx.fillStyle='#ddbb66';ctx.font=`bold 13px 'Courier New',monospace`;
+        ctx.fillText('What could this mean?',W/2,boxY+boxH*0.33);
+        ctx.fillStyle='#664422';ctx.font=`11px 'Courier New',monospace`;
+        ctx.fillText('[ PRESS ENTER ]',W/2,boxY+boxH*0.70);
+    }
+}
+
+// ═══════════════════════════════════════════════════════
+//  MAIN LOOP
+// ═══════════════════════════════════════════════════════
+function drawPaperInTunnel(){
+    if(!game.paperInHallway||game.paperCollected||appScreen!=='game')return;
+    const relDepth=PAPER_POS-game.pos;
+    if(relDepth<=2||relDepth>=TORCH_DEPTH)return;
+    const W=canvas.width,H=canvas.height;
+    const s=pScale(relDepth);
+    const cx=W/2, cy=H/2;
+    const floorY=cy+H*s/2;          // bottom of tunnel rect at this depth
+    const pw=24*s, ph=32*s;
+    const px=cx-pw/2, py=floorY-ph; // paper sits on the floor
+    const vis=Math.min(1,(TORCH_DEPTH-relDepth)/(TORCH_DEPTH*0.45));
+
+    ctx.save();
+    // Glow
+    ctx.shadowColor='rgba(255,235,160,0.95)';
+    ctx.shadowBlur=22*s;
+    // Paper body
+    ctx.fillStyle=`rgba(240,218,155,${vis})`;
+    ctx.fillRect(px,py,pw,ph);
+    // Faint lines
+    ctx.shadowBlur=0;
+    ctx.strokeStyle=`rgba(110,80,30,${vis*0.45})`;
+    ctx.lineWidth=Math.max(0.4,s*0.8);
+    for(let i=1;i<=3;i++){
+        const ly=py+ph*(0.28+i*0.17);
+        ctx.beginPath();ctx.moveTo(px+pw*0.15,ly);ctx.lineTo(px+pw*0.85,ly);ctx.stroke();
+    }
+    ctx.restore();
+}
+
+// ═══════════════════════════════════════════════════════
+//  WALL TORCH
+// ═══════════════════════════════════════════════════════
+function collectWallTorch(){
+    game.torch=TORCH_MAX;
+    game.wallTorchCollected=true;
+    game.wallTorchShowing=false;
+}
+
+function drawWallTorch(){
+    if(!game.wallTorchPos||game.wallTorchCollected||appScreen!=='game')return;
+    const W=canvas.width,H=canvas.height;
+    const relDepth=game.wallTorchPos-game.pos;
+    if(relDepth<=0||relDepth>=TORCH_DEPTH)return;
+
+    const s=pScale(relDepth);
+    const r=pRect(relDepth);
+    const vis=Math.min(1,(TORCH_DEPTH-relDepth)/(TORCH_DEPTH*0.45));
+
+    // Mount point: left wall inner edge, ~40% down the tunnel face
+    const mountX=r.x;
+    const mountY=r.y+r.h*0.42;
+    const stickLen=Math.max(6,32*s);
+
+    // Stick angle: outward from left wall (right) and upward - like a wall sconce
+    const stickAngle=-Math.PI/5.5; // ≈ -33°
+    const tipX=mountX+Math.cos(stickAngle)*stickLen;
+    const tipY=mountY+Math.sin(stickAngle)*stickLen;
+
+    ctx.save();
+
+    // Ambient glow behind everything
+    const glowR=Math.max(6,20*s);
+    const gg=ctx.createRadialGradient(tipX,tipY,0,tipX,tipY,glowR*2.2);
+    gg.addColorStop(0,`rgba(255,170,40,${0.55*vis})`);
+    gg.addColorStop(1,'rgba(255,90,0,0)');
+    ctx.fillStyle=gg;
+    ctx.beginPath();ctx.arc(tipX,tipY,glowR*2.2,0,Math.PI*2);ctx.fill();
+
+    // Stick / handle
+    ctx.strokeStyle=`rgba(65,38,12,${vis})`;
+    ctx.lineWidth=Math.max(1,3.5*s);
+    ctx.lineCap='round';
+    ctx.beginPath();ctx.moveTo(mountX,mountY);ctx.lineTo(tipX,tipY);ctx.stroke();
+
+    // Small cup at tip
+    ctx.fillStyle=`rgba(55,30,8,${vis})`;
+    ctx.beginPath();ctx.arc(tipX,tipY,Math.max(2,3*s),0,Math.PI*2);ctx.fill();
+
+    // Rotating flame polygons
+    const t=Date.now()/1000;
+    const fR=Math.max(3,10*s);
+
+    function flamePoly(radius,speed,offset,sides,r255,g255,b255,alpha){
+        const rot=t*speed+offset;
+        ctx.fillStyle=`rgba(${r255},${g255},${b255},${alpha*vis})`;
+        ctx.shadowColor=`rgba(${r255},${g255},0,${0.75*vis})`;
+        ctx.shadowBlur=fR*1.5;
+        ctx.beginPath();
+        for(let i=0;i<sides;i++){
+            const a=rot+(i/sides)*Math.PI*2;
+            // Alternate long spikes / short valleys = flame star shape
+            const rad=radius*(i%2===0?1.0:0.48+0.18*Math.sin(t*4.8+i*1.9));
+            const px=tipX+Math.cos(a)*rad;
+            const py=tipY+Math.sin(a)*rad;
+            if(i===0)ctx.moveTo(px,py);else ctx.lineTo(px,py);
+        }
+        ctx.closePath();ctx.fill();
+        ctx.shadowBlur=0;
+    }
+
+    flamePoly(fR*1.00,  1.8, 0.0,  8, 255, 65,  0,  0.82); // deep orange outer
+    flamePoly(fR*0.70, -2.5, 1.1,  7, 255,150, 10,  0.88); // orange-yellow mid
+    flamePoly(fR*0.42,  3.8, 2.2,  6, 255,228, 70,  0.93); // bright yellow inner
+    flamePoly(fR*0.20, -6.0, 3.5,  5, 255,252,200,  1.00); // white-hot core
+
+    ctx.restore();
+
+    // Prompt drawn on canvas when close
+    if(game.wallTorchShowing){
+        const boxH=56, boxY=H-44-boxH;
+        ctx.fillStyle='rgba(0,0,0,0.90)';ctx.fillRect(0,boxY,W,boxH);
+        ctx.strokeStyle='#774400';ctx.lineWidth=1;
+        ctx.beginPath();ctx.moveTo(0,boxY+1);ctx.lineTo(W,boxY+1);ctx.stroke();
+        ctx.textAlign='center';ctx.textBaseline='middle';
+        ctx.fillStyle='#ffcc55';
+        ctx.font=`bold 13px 'Courier New',monospace`;
+        ctx.fillText('TORCH FOUND.  WHY IS THIS HERE?',W/2,boxY+boxH*0.33);
+        ctx.fillStyle='#886633';
+        ctx.font=`11px 'Courier New',monospace`;
+        ctx.fillText('[ PRESS ENTER TO REPLACE YOUR TORCH ]',W/2,boxY+boxH*0.70);
+    }
+}
+
+// ═══════════════════════════════════════════════════════
+//  EXIT SCENE DRAWING
+// ═══════════════════════════════════════════════════════
+function drawCloud(cx,cy,r){
+    ctx.save();
+    ctx.fillStyle='rgba(255,255,255,0.96)';
+    [[0,0,1],[-0.65,0.25,0.72],[0.65,0.25,0.72],[-1.1,0.55,0.58],[1.1,0.55,0.58],[0,0.55,0.65]]
+        .forEach(([ox,oy,rs])=>{
+            ctx.beginPath();ctx.arc(cx+ox*r,cy+oy*r,r*rs,0,Math.PI*2);ctx.fill();
+        });
+    ctx.restore();
+}
+
+function drawFlower(cx,cy,r,color){
+    ctx.save();
+    ctx.strokeStyle='#3a8a1a';ctx.lineWidth=Math.max(1,r*0.5);ctx.lineCap='round';
+    ctx.beginPath();ctx.moveTo(cx,cy);
+    ctx.quadraticCurveTo(cx+r*0.3,cy+r*1.5,cx,cy+r*3.5);ctx.stroke();
+    ctx.fillStyle=color;
+    for(let i=0;i<5;i++){
+        const a=(i/5)*Math.PI*2-Math.PI/2;
+        ctx.beginPath();ctx.arc(cx+Math.cos(a)*r*1.3,cy+Math.sin(a)*r*1.3,r,0,Math.PI*2);ctx.fill();
+    }
+    ctx.fillStyle='#ffee00';
+    ctx.beginPath();ctx.arc(cx,cy,r*0.75,0,Math.PI*2);ctx.fill();
+    ctx.restore();
+}
+
+function drawPuppy(cx,cy,sz){
+    ctx.save();
+    const bY=cy-sz*0.28, hY=cy-sz*0.68;
+    // Tail
+    ctx.strokeStyle='#c8853a';ctx.lineWidth=sz*0.08;ctx.lineCap='round';
+    ctx.beginPath();ctx.moveTo(cx+sz*0.28,bY+sz*0.05);
+    ctx.quadraticCurveTo(cx+sz*0.52,bY-sz*0.22,cx+sz*0.40,bY-sz*0.50);ctx.stroke();
+    // Body
+    ctx.fillStyle='#d4953a';
+    ctx.beginPath();ctx.ellipse(cx,bY,sz*0.32,sz*0.26,0,0,Math.PI*2);ctx.fill();
+    // Front legs
+    ctx.fillStyle='#d4953a';
+    ctx.beginPath();ctx.ellipse(cx-sz*0.13,cy-sz*0.07,sz*0.09,sz*0.13,-0.1,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.ellipse(cx+sz*0.13,cy-sz*0.07,sz*0.09,sz*0.13,0.1,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#b07020';
+    ctx.beginPath();ctx.ellipse(cx-sz*0.13,cy+sz*0.05,sz*0.09,sz*0.04,0,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.ellipse(cx+sz*0.13,cy+sz*0.05,sz*0.09,sz*0.04,0,0,Math.PI*2);ctx.fill();
+    // Ears (behind head)
+    ctx.fillStyle='#b07020';
+    ctx.beginPath();ctx.ellipse(cx-sz*0.22,hY+sz*0.05,sz*0.10,sz*0.19,-0.25,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.ellipse(cx+sz*0.22,hY+sz*0.05,sz*0.10,sz*0.19,0.25,0,Math.PI*2);ctx.fill();
+    // Head
+    ctx.fillStyle='#e0a040';
+    ctx.beginPath();ctx.arc(cx,hY,sz*0.23,0,Math.PI*2);ctx.fill();
+    // Eyes
+    ctx.fillStyle='#1a1000';
+    ctx.beginPath();ctx.arc(cx-sz*0.09,hY-sz*0.06,sz*0.045,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(cx+sz*0.09,hY-sz*0.06,sz*0.045,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#fff';
+    ctx.beginPath();ctx.arc(cx-sz*0.076,hY-sz*0.073,sz*0.016,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(cx+sz*0.103,hY-sz*0.073,sz*0.016,0,Math.PI*2);ctx.fill();
+    // Muzzle
+    ctx.fillStyle='#e8c070';
+    ctx.beginPath();ctx.ellipse(cx,hY+sz*0.05,sz*0.13,sz*0.10,0,0,Math.PI*2);ctx.fill();
+    // Nose
+    ctx.fillStyle='#2a0e00';
+    ctx.beginPath();ctx.ellipse(cx,hY-sz*0.002,sz*0.06,sz*0.04,0,0,Math.PI*2);ctx.fill();
+    // Smile
+    ctx.strokeStyle='#2a0e00';ctx.lineWidth=sz*0.022;ctx.lineCap='round';
+    ctx.beginPath();ctx.arc(cx-sz*0.045,hY+sz*0.057,sz*0.04,0.1,Math.PI-0.1);ctx.stroke();
+    ctx.beginPath();ctx.arc(cx+sz*0.045,hY+sz*0.057,sz*0.04,0.1,Math.PI-0.1);ctx.stroke();
+    // Tongue
+    ctx.fillStyle='#ff6680';
+    ctx.beginPath();ctx.ellipse(cx,hY+sz*0.10,sz*0.055,sz*0.066,0,0,Math.PI*2);ctx.fill();
+    ctx.restore();
+}
+
+// ── Boss gremlin (final scene) ────────────────────────
+function drawBossGremlin(cx, groundY, size) {
+    const t = Date.now()/1000;
+    const bW = size*0.54, bH = size*0.74;
+    const bTop = groundY - bH;
+    ctx.save();
+    // Shadow
+    ctx.fillStyle='rgba(0,0,0,0.38)';
+    ctx.beginPath();ctx.ellipse(cx,groundY,bW*0.6,size*0.055,0,0,Math.PI*2);ctx.fill();
+    // Body blob
+    ctx.fillStyle='#162010';
+    ctx.beginPath();
+    ctx.moveTo(cx-bW*0.5, groundY);
+    ctx.bezierCurveTo(cx-bW*0.68, groundY-bH*0.28, cx-bW*0.44, bTop+bH*0.08, cx-bW*0.12, bTop);
+    ctx.bezierCurveTo(cx+bW*0.08, bTop-size*0.03, cx+bW*0.38, bTop+bH*0.1, cx+bW*0.60, groundY-bH*0.25);
+    ctx.bezierCurveTo(cx+bW*0.68, groundY-bH*0.08, cx+bW*0.52, groundY, cx+bW*0.5, groundY);
+    ctx.closePath(); ctx.fill();
+    // Warts
+    ctx.fillStyle='#0c1408';
+    [[0,0.38],[-0.28,0.54],[0.22,0.30],[0.08,0.66],[-0.18,0.72]].forEach(([dx,dy])=>{
+        ctx.beginPath();ctx.arc(cx+bW*dx, bTop+bH*dy, size*0.026,0,Math.PI*2);ctx.fill();
+    });
+    // Arms (raised, wobbling)
+    const wb = Math.sin(t*2.8)*0.05;
+    ctx.strokeStyle='#162010'; ctx.lineWidth=size*0.09; ctx.lineCap='round';
+    ctx.beginPath();
+    ctx.moveTo(cx-bW*0.44, bTop+bH*0.35);
+    ctx.quadraticCurveTo(cx-bW*0.78, bTop+bH*0.04+wb*size, cx-bW*0.66, bTop-size*0.10+wb*size);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(cx+bW*0.44, bTop+bH*0.35);
+    ctx.quadraticCurveTo(cx+bW*0.78, bTop+bH*0.04-wb*size, cx+bW*0.66, bTop-size*0.10-wb*size);
+    ctx.stroke();
+    // Head
+    const hY = bTop+size*0.07, hR = size*0.25;
+    ctx.fillStyle='#1c2e12';
+    ctx.beginPath();ctx.arc(cx,hY,hR,0,Math.PI*2);ctx.fill();
+    // Spiky hair
+    ctx.fillStyle='#0c1608';
+    for(let i=0;i<8;i++){
+        const a=Math.PI+(i/7)*Math.PI+Math.sin(t*1.4+i*0.8)*0.05;
+        const r1=hR*0.90, r2=hR*(1.42+Math.sin(t*3+i)*0.06);
+        ctx.beginPath();
+        ctx.moveTo(cx+Math.cos(a-0.09)*r1, hY+Math.sin(a-0.09)*r1);
+        ctx.lineTo(cx+Math.cos(a)*r2,       hY+Math.sin(a)*r2);
+        ctx.lineTo(cx+Math.cos(a+0.09)*r1, hY+Math.sin(a+0.09)*r1);
+        ctx.fill();
+    }
+    // Eyes - glowing yellow slit pupils
+    const eY = hY-hR*0.10, eR = hR*0.30, eSep = hR*0.44;
+    const glow = 0.55+0.22*Math.sin(t*4.5);
+    [-eSep, eSep].forEach(ex=>{
+        const eg=ctx.createRadialGradient(cx+ex,eY,0,cx+ex,eY,eR*3.5);
+        eg.addColorStop(0,`rgba(255,215,0,${glow})`);
+        eg.addColorStop(1,'rgba(255,170,0,0)');
+        ctx.fillStyle=eg;
+        ctx.beginPath();ctx.arc(cx+ex,eY,eR*3.5,0,Math.PI*2);ctx.fill();
+        ctx.fillStyle=`hsl(50,100%,${50+12*Math.sin(t*4.5)}%)`;
+        ctx.beginPath();ctx.ellipse(cx+ex,eY,eR,eR*0.78,0,0,Math.PI*2);ctx.fill();
+        ctx.fillStyle='#050200';
+        ctx.beginPath();ctx.ellipse(cx+ex,eY,eR*0.26,eR*0.72,0,0,Math.PI*2);ctx.fill();
+    });
+    // Jagged grin
+    const mY=hY+hR*0.46, mW=hR*0.74;
+    ctx.fillStyle='#060e02';
+    ctx.beginPath();
+    ctx.moveTo(cx-mW,mY);
+    for(let i=0;i<=7;i++){
+        ctx.lineTo(cx-mW+(i/7)*mW*2, mY+(i%2===0?hR*0.20:-hR*0.07));
+    }
+    ctx.closePath();ctx.fill();
+    // Teeth
+    ctx.fillStyle='#c8c890';
+    for(let i=0;i<4;i++){
+        const tx=cx-mW*0.58+i*mW*0.38;
+        ctx.beginPath();
+        ctx.moveTo(tx,mY); ctx.lineTo(tx+mW*0.13,mY); ctx.lineTo(tx+mW*0.065,mY+hR*0.15);
+        ctx.fill();
+    }
+    ctx.restore();
+}
+
+// ── Final boss quiz ───────────────────────────────────
+const FINAL_QUIZ_COUNT = 10;
+
+function buildFinalQuiz() {
+    const pool=[...game.processes]; shuffle(pool);
+    const chosen=pool.slice(0,FINAL_QUIZ_COUNT);
+    game.finalQuiz={
+        questions: chosen.map(proc=>{
+            const wrong=pool.filter(p=>p!==proc); shuffle(wrong);
+            const opts=[proc,...wrong.slice(0,3)]; shuffle(opts);
+            const prompts=[proc.prompt,...(proc.alternative_prompts||[])];
+            shuffle(prompts);
+            return {proc, opts, correct:opts.indexOf(proc), prompts, promptIdx:0};
+        }),
+        idx:0, locked:false
+    };
+}
+
+function showFinalQuizQuestion() {
+    if(!game.finalBossActive||game.finalBossDefeated)return;
+    const q=game.finalQuiz.questions[game.finalQuiz.idx];
+    document.getElementById('fqProgress').textContent=
+        `QUESTION  ${game.finalQuiz.idx+1}  OF  ${FINAL_QUIZ_COUNT}`;
+    document.getElementById('fqQuestion').textContent=
+        q.prompts[q.promptIdx % q.prompts.length];
+    const optsEl=document.getElementById('fqOptions');
+    optsEl.innerHTML='';
+    ['A','B','C','D'].forEach((key,i)=>{
+        const d=document.createElement('div');
+        d.className='fq-opt';
+        d.innerHTML=`<span class="fq-key">[${key}]</span>${q.opts[i].id.replace(/_/g,' ')}`;
+        optsEl.appendChild(d);
+    });
+    document.getElementById('fqFeedback').textContent='';
+    document.getElementById('finalQuizOverlay').classList.add('active');
+}
+
+function handleFinalQuizAnswer(letter) {
+    if(!game.finalBossActive||game.finalBossDefeated)return;
+    if(!game.finalQuiz||game.finalQuiz.locked)return;
+    const chosen='ABCD'.indexOf(letter.toUpperCase());
+    if(chosen<0)return;
+    const q=game.finalQuiz.questions[game.finalQuiz.idx];
+    game.finalQuiz.locked=true;
+    const fb=document.getElementById('fqFeedback');
+    if(chosen===q.correct){
+        fb.style.color='#44ff88'; fb.textContent='CORRECT!';
+        setTimeout(()=>{
+            game.finalQuiz.idx++;
+            if(game.finalQuiz.idx>=FINAL_QUIZ_COUNT){
+                document.getElementById('finalQuizOverlay').classList.remove('active');
+                game.finalBossActive=false;
+                game.finalBossDefeated=true;
+                game.exitStartTime=Date.now();
+            } else {
+                game.finalQuiz.locked=false;
+                showFinalQuizQuestion();
+            }
+        },700);
+    } else {
+        const taunts=[
+            'WRONG.  Let me describe it differently...',
+            '*sneers*  No.  Try this description.',
+            'Incorrect.  Perhaps this angle will help you.',
+            'The bureaucracy is not impressed.  Read carefully.',
+        ];
+        fb.style.color='#ff4422';
+        fb.textContent=taunts[Math.floor(Math.random()*taunts.length)];
+        // advance to next prompt for the same question
+        q.promptIdx++;
+        setTimeout(()=>{
+            game.finalQuiz.locked=false;
+            showFinalQuizQuestion();
+        },1800);
+    }
+}
+
+function drawMountainScene(bx,by,bw,bh,mode){
+    // mode: 'normal' | 'boss' | 'victory'
+    ctx.save();
+    ctx.beginPath();ctx.rect(bx,by,bw,bh);ctx.clip();
+    // Sky
+    const sky=ctx.createLinearGradient(bx,by,bx,by+bh);
+    sky.addColorStop(0,'#1a5fa8');sky.addColorStop(0.55,'#64c8f0');sky.addColorStop(1,'#b8eaf8');
+    ctx.fillStyle=sky;ctx.fillRect(bx,by,bw,bh);
+    // Sun
+    const sx=bx+bw*0.80,sy=by+bh*0.14,sr=bw*0.065;
+    const sg=ctx.createRadialGradient(sx,sy,0,sx,sy,sr*3);
+    sg.addColorStop(0,'rgba(255,255,210,1)');sg.addColorStop(0.35,'rgba(255,240,100,0.7)');sg.addColorStop(1,'rgba(255,210,50,0)');
+    ctx.fillStyle=sg;ctx.beginPath();ctx.arc(sx,sy,sr*3,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#fffff0';ctx.beginPath();ctx.arc(sx,sy,sr,0,Math.PI*2);ctx.fill();
+    const horizY=by+bh*0.52;
+    // Far mountains
+    ctx.fillStyle='#8aaac8';
+    ctx.beginPath();ctx.moveTo(bx,horizY);
+    [[0.05,0.26],[0.18,0.12],[0.30,0.28],[0.44,0.10],[0.57,0.20],[0.70,0.08],[0.83,0.22],[1.0,0.14]]
+        .forEach(([px,py])=>ctx.lineTo(bx+bw*px,by+bh*py));
+    ctx.lineTo(bx+bw,horizY);ctx.closePath();ctx.fill();
+    // Mid mountains
+    ctx.fillStyle='#5a789a';
+    ctx.beginPath();ctx.moveTo(bx,horizY);
+    [[-0.05,0.32],[0.12,0.20],[0.30,0.30],[0.50,0.18],[0.68,0.26],[0.85,0.20],[1.05,0.30]]
+        .forEach(([px,py])=>ctx.lineTo(bx+bw*px,by+bh*py));
+    ctx.lineTo(bx+bw,horizY);ctx.closePath();ctx.fill();
+    // Snow caps
+    ctx.fillStyle='rgba(255,255,255,0.88)';
+    [[0.18,0.12,0.038],[0.44,0.10,0.030],[0.70,0.08,0.033],[0.50,0.18,0.028]].forEach(([px,py,sw])=>{
+        ctx.beginPath();
+        ctx.moveTo(bx+bw*(px-sw*1.6),by+bh*(py+sw*2.2));
+        ctx.lineTo(bx+bw*px,by+bh*py);
+        ctx.lineTo(bx+bw*(px+sw*1.6),by+bh*(py+sw*2.2));
+        ctx.closePath();ctx.fill();
+    });
+    // Near hills
+    ctx.fillStyle='#3a6e28';
+    ctx.beginPath();ctx.moveTo(bx,horizY);
+    [[-0.05,0.40],[0.18,0.36],[0.40,0.42],[0.62,0.38],[0.85,0.43],[1.05,0.39]]
+        .forEach(([px,py])=>ctx.lineTo(bx+bw*px,by+bh*py));
+    ctx.lineTo(bx+bw,horizY);ctx.closePath();ctx.fill();
+    // Ground
+    const gnd=ctx.createLinearGradient(bx,horizY,bx,by+bh);
+    gnd.addColorStop(0,'#5ec240');gnd.addColorStop(0.25,'#4aaa30');gnd.addColorStop(1,'#2a6818');
+    ctx.fillStyle=gnd;ctx.fillRect(bx,horizY,bw,by+bh-horizY);
+    // Clouds
+    const cs=bw*0.065;
+    drawCloud(bx+bw*0.13,by+bh*0.10,cs*1.1);
+    drawCloud(bx+bw*0.44,by+bh*0.07,cs*0.88);
+    drawCloud(bx+bw*0.70,by+bh*0.11,cs*0.80);
+    // Flowers - dance in victory mode
+    const fs=bw*0.018;
+    const ft=Date.now()/1000;
+    [[0.06,'#ff4455'],[0.14,'#ff88dd'],[0.22,'#ffcc00'],[0.32,'#cc44ee'],
+     [0.42,'#ff6600'],[0.60,'#ffffff'],[0.70,'#ff44aa'],[0.80,'#88ee44'],
+     [0.88,'#ff5533'],[0.95,'#ffcc00']].forEach(([fx,col],i)=>{
+        const dance=mode==='victory'?Math.sin(ft*3.5+i*0.9)*bh*0.028:0;
+        drawFlower(bx+bw*fx, horizY+bh*(0.07+(i%4)*0.034+Math.sin(i*2.1)*0.018)+dance, fs, col);
+    });
+    // Boss gremlin or puppy
+    if(mode==='boss'){
+        drawBossGremlin(bx+bw*0.50, horizY+bh*0.46, bh*0.30);
+        // "You haven't escaped yet!" speech bubble text
+        const tx=bx+bw*0.50, ty=horizY+bh*0.09;
+        ctx.font=`bold ${Math.round(bw*0.030)}px 'Courier New',monospace`;
+        ctx.textAlign='center'; ctx.textBaseline='middle';
+        ctx.fillStyle='rgba(0,0,0,0.70)';
+        const tw2=ctx.measureText("You haven't escaped yet!").width+16;
+        ctx.fillRect(tx-tw2/2, ty-14, tw2, 28);
+        ctx.fillStyle='#ffdd44';
+        ctx.fillText("You haven't escaped yet!",tx,ty);
+    } else {
+        drawPuppy(bx+bw*0.50, horizY+bh*0.26, bh*0.22);
+    }
+    ctx.restore();
+}
+
+function drawExitPortal(){
+    if(appScreen!=='game')return;
+    const W=canvas.width,H=canvas.height,cx=W/2,cy=H/2;
+
+    if(game.exitShowing){
+        const elapsed=Date.now()-game.exitStartTime;
+        const sceneMode=game.finalBossActive?'boss':game.finalBossDefeated?'victory':'normal';
+        drawMountainScene(0,0,W,H,sceneMode);
+
+        // Trigger boss after 2 s (fires once - guarded by finalBossActive flag)
+        if(elapsed>=2000&&!game.finalBossActive&&!game.finalBossDefeated){
+            game.finalBossActive=true;
+            buildFinalQuiz();
+            setTimeout(showFinalQuizQuestion,1200);
+        }
+
+        // Victory overlay after gremlin defeated
+        if(game.finalBossDefeated){
+            const fa=Math.min(1,elapsed/700);
+            ctx.fillStyle=`rgba(0,0,0,${0.60*fa})`;ctx.fillRect(0,0,W,H);
+            ctx.textAlign='center';ctx.textBaseline='middle';
+            ctx.fillStyle=`rgba(255,240,100,${fa})`;
+            ctx.font=`bold ${Math.round(W*0.038)}px 'Courier New',monospace`;
+            ctx.fillText('I AM DEFEATED AND YOU ARE FREEEEEEE',cx,cy-H*0.16);
+            if(elapsed>1200){
+                const fa2=Math.min(1,(elapsed-1200)/700);
+                ctx.fillStyle=`rgba(200,255,200,${fa2})`;
+                ctx.font=`${Math.round(W*0.023)}px 'Courier New',monospace`;
+                ctx.fillText(`Congratulations ${game.playerName},`,cx,cy-H*0.06);
+                ctx.fillText('you have escaped the tunnel!',cx,cy-H*0.00);
+            }
+            if(elapsed>4000){
+                game.exitDone=true;
+                const pulse=(Math.sin(Date.now()/380)+1)/2*fa;
+                ctx.fillStyle=`rgba(255,210,60,${pulse})`;
+                ctx.font=`${Math.round(W*0.017)}px 'Courier New',monospace`;
+                ctx.fillText('[ PRESS SPACE TO PLAY AGAIN ]',cx,cy+H*0.12);
+            }
+        }
+        return;
+    }
+
+    if(!game.exitPos)return;
+    const relDepth=game.exitPos-game.pos;
+    if(relDepth<=0)return;
+
+    // Bloom glow visible from far
+    if(relDepth<TORCH_DEPTH*1.5){
+        const glowR=Math.max(10,(TORCH_DEPTH-Math.min(relDepth,TORCH_DEPTH))/TORCH_DEPTH*W*0.30);
+        const glowA=Math.min(0.92,(TORCH_DEPTH*1.5-relDepth)/(TORCH_DEPTH*1.3));
+        const glow=ctx.createRadialGradient(cx,cy,0,cx,cy,glowR);
+        glow.addColorStop(0,`rgba(200,245,255,${glowA})`);
+        glow.addColorStop(0.45,`rgba(100,210,255,${glowA*0.45})`);
+        glow.addColorStop(1,'rgba(60,170,255,0)');
+        ctx.fillStyle=glow;ctx.beginPath();ctx.arc(cx,cy,glowR,0,Math.PI*2);ctx.fill();
+    }
+    // Scene inside the approaching portal rect
+    if(relDepth<TORCH_DEPTH){
+        const r=pRect(relDepth);
+        if(r.w>2&&r.h>2) drawMountainScene(r.x,r.y,r.w,r.h);
+    }
+}
+
+// ═══════════════════════════════════════════════════════
+//  SIDE PASSAGE
+// ═══════════════════════════════════════════════════════
+function drawSidePassage(){
+    if(appScreen!=='game'||game.exitShowing||!game.sidePassagePos)return;
+    const W=canvas.width,H=canvas.height;
+    const relDepth=game.sidePassagePos-game.pos;
+    if(relDepth<=0||relDepth>TORCH_DEPTH*1.1)return;
+    const r=pRect(relDepth);
+    const tp=(game.torch/TORCH_MAX)*game.flicker;
+    const pL=wallL(relDepth,36,tp);
+    // Hole anchored to the right inner wall edge
+    const hx=r.x+r.w;
+    const hy=r.y+r.h*0.62;
+    const hw=r.h*0.13;
+    const hh=r.h*0.30;
+    ctx.save();
+    // Rough stone surround
+    ctx.fillStyle=`hsl(25,16%,${Math.min(pL*1.3,22).toFixed(1)}%)`;
+    ctx.beginPath();ctx.ellipse(hx,hy,hw*1.55,hh*1.35,0,0,Math.PI*2);ctx.fill();
+    // Jagged inner edge (slightly smaller rough ellipse)
+    ctx.fillStyle=`hsl(22,10%,${Math.min(pL*0.7,10).toFixed(1)}%)`;
+    ctx.beginPath();ctx.ellipse(hx,hy,hw*1.18,hh*1.08,0.08,0,Math.PI*2);ctx.fill();
+    // Dark void
+    ctx.fillStyle='#010100';
+    ctx.beginPath();ctx.ellipse(hx,hy,hw,hh,0,0,Math.PI*2);ctx.fill();
+    // Faint amber glow from inside (torch not yet taken)
+    if(!game.sidePassageTorchTaken){
+        const vis=Math.min(1,(TORCH_DEPTH-relDepth)/(TORCH_DEPTH*0.65));
+        const gl=ctx.createRadialGradient(hx,hy,0,hx,hy,hw*2.2);
+        gl.addColorStop(0,`rgba(210,115,18,${0.45*vis})`);
+        gl.addColorStop(1,'rgba(0,0,0,0)');
+        ctx.fillStyle=gl;
+        ctx.beginPath();ctx.arc(hx,hy,hw*2.2,0,Math.PI*2);ctx.fill();
+    }
+    ctx.restore();
+    // Proximity prompt
+    if(game.sidePassageNear&&!game.sidePassageVisited){
+        const boxH=56,boxY=H-44-boxH;
+        ctx.fillStyle='rgba(0,0,0,0.90)';ctx.fillRect(0,boxY,W,boxH);
+        ctx.strokeStyle='#553300';ctx.lineWidth=1;
+        ctx.beginPath();ctx.moveTo(0,boxY+1);ctx.lineTo(W,boxY+1);ctx.stroke();
+        ctx.textAlign='center';ctx.textBaseline='middle';
+        ctx.fillStyle='#ccaa33';ctx.font=`bold 13px 'Courier New',monospace`;
+        ctx.fillText('a dark opening in the wall...',W/2,boxY+boxH*0.33);
+        ctx.fillStyle='#664422';ctx.font=`11px 'Courier New',monospace`;
+        ctx.fillText('[ PRESS ENTER TO EXPLORE ]',W/2,boxY+boxH*0.70);
+    }
+}
+
+function drawPassageRoom(){
+    if(!game.sidePassageActive||appScreen!=='game')return;
+    const W=canvas.width,H=canvas.height,cx=W/2;
+    const pal=game.tunnelPalette||genTunnelPalette();
+
+    // Background
+    ctx.fillStyle='#050302';ctx.fillRect(0,0,W,H);
+
+    // Room geometry – short alcove with a vanishing point
+    const vx=cx,vy=H*0.44;
+    const backW=W*0.40,backH=H*0.46;
+    const bx=cx-backW/2,by=vy-backH*0.08;
+
+    // Ceiling
+    ctx.fillStyle=`hsl(${pal.ceilH},${(pal.ceilS*0.35).toFixed(0)}%,9%)`;
+    ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(W,0);ctx.lineTo(bx+backW,by);ctx.lineTo(bx,by);ctx.closePath();ctx.fill();
+    // Floor
+    ctx.fillStyle=`hsl(${pal.floorH},${(pal.floorS*0.3).toFixed(0)}%,11%)`;
+    ctx.beginPath();ctx.moveTo(0,H);ctx.lineTo(W,H);ctx.lineTo(bx+backW,by+backH);ctx.lineTo(bx,by+backH);ctx.closePath();ctx.fill();
+    // Left wall
+    ctx.fillStyle=`hsl(${pal.wallH},${(pal.wallS*0.3).toFixed(0)}%,10%)`;
+    ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(0,H);ctx.lineTo(bx,by+backH);ctx.lineTo(bx,by);ctx.closePath();ctx.fill();
+    // Right wall
+    ctx.beginPath();ctx.moveTo(W,0);ctx.lineTo(W,H);ctx.lineTo(bx+backW,by+backH);ctx.lineTo(bx+backW,by);ctx.closePath();ctx.fill();
+
+    // Back wall stone surface
+    const bwg=ctx.createLinearGradient(bx,by,bx+backW,by+backH);
+    bwg.addColorStop(0,`hsl(${pal.wallH},${(pal.wallS*0.45).toFixed(0)}%,14%)`);
+    bwg.addColorStop(0.55,`hsl(${pal.wallH},${(pal.wallS*0.45).toFixed(0)}%,17%)`);
+    bwg.addColorStop(1,`hsl(${pal.wallH},${(pal.wallS*0.4).toFixed(0)}%,10%)`);
+    ctx.fillStyle=bwg;ctx.fillRect(bx,by,backW,backH);
+
+    // Stone block seams on back wall
+    ctx.save();ctx.beginPath();ctx.rect(bx,by,backW,backH);ctx.clip();
+    ctx.strokeStyle='rgba(0,0,0,0.28)';ctx.lineWidth=1.5;
+    const rows=5,cols=4,bkh=backH/rows,bkw=backW/cols;
+    for(let row=0;row<=rows;row++){
+        const ly=by+row*bkh,off=(row%2)*bkw*0.5;
+        ctx.beginPath();ctx.moveTo(bx,ly);ctx.lineTo(bx+backW,ly);ctx.stroke();
+        for(let col=-1;col<=cols;col++){
+            const lx=bx+col*bkw+off;
+            ctx.beginPath();ctx.moveTo(lx,ly);ctx.lineTo(lx,ly+bkh);ctx.stroke();
+        }
+    }
+    ctx.restore();
+
+    // Torch on back wall (right side)
+    const tx=bx+backW*0.74,ty=by+backH*0.32,ts=W*0.020;
+    if(!game.sidePassageTorchTaken){
+        // Glow
+        const tg=ctx.createRadialGradient(tx,ty,0,tx,ty,ts*9);
+        tg.addColorStop(0,'rgba(255,145,28,0.60)');
+        tg.addColorStop(0.45,'rgba(180,70,0,0.22)');
+        tg.addColorStop(1,'rgba(0,0,0,0)');
+        ctx.fillStyle=tg;ctx.beginPath();ctx.arc(tx,ty,ts*9,0,Math.PI*2);ctx.fill();
+        // Stick
+        ctx.strokeStyle='rgba(75,42,10,0.92)';ctx.lineWidth=Math.max(2,ts*0.65);ctx.lineCap='round';
+        ctx.beginPath();ctx.moveTo(tx,ty+ts*2.8);ctx.lineTo(tx,ty);ctx.stroke();
+        ctx.fillStyle='rgba(50,28,6,0.9)';ctx.beginPath();ctx.arc(tx,ty,Math.max(2,ts*0.4),0,Math.PI*2);ctx.fill();
+        // Flame polys
+        const ft=Date.now()/1000;
+        function fp(rad,spd,off,sides,r,g,b,a){
+            const rot=ft*spd+off;
+            ctx.fillStyle=`rgba(${r},${g},${b},${a})`;
+            ctx.shadowColor=`rgba(${r},${g},0,0.75)`;ctx.shadowBlur=rad*1.5;
+            ctx.beginPath();
+            for(let i=0;i<sides;i++){
+                const ang=rot+(i/sides)*Math.PI*2;
+                const rd=rad*(i%2===0?1.0:0.48+0.18*Math.sin(ft*4.8+i*1.9));
+                const px=tx+Math.cos(ang)*rd,py=ty+Math.sin(ang)*rd;
+                i===0?ctx.moveTo(px,py):ctx.lineTo(px,py);
+            }
+            ctx.closePath();ctx.fill();ctx.shadowBlur=0;
+        }
+        fp(ts*1.00, 1.8,0.0,8,255, 65,  0,0.82);
+        fp(ts*0.70,-2.5,1.1,7,255,150, 10,0.88);
+        fp(ts*0.42, 3.8,2.2,6,255,228, 70,0.93);
+        fp(ts*0.20,-6.0,3.5,5,255,252,200,1.00);
+    }
+
+    // Etched "VOLCANISM" – slanted scrawling handwriting
+    const fontSize=Math.max(12,backH*0.092);
+    const etx=bx+backW*0.30,ety=by+backH*0.60;
+    ctx.save();
+    ctx.translate(etx,ety);ctx.rotate(-0.14);
+    ctx.font=`italic bold ${fontSize}px 'Palatino Linotype','Book Antiqua',Georgia,serif`;
+    ctx.textAlign='left';ctx.textBaseline='middle';
+    // Carved depth shadow
+    ctx.fillStyle=`hsl(${pal.wallH},6%,6%)`;ctx.fillText('VOLCANISM',3,4);
+    // Cut-stone surface (lighter, suggests depth of chisel)
+    ctx.fillStyle=`hsl(${pal.wallH+4},14%,30%)`;ctx.fillText('VOLCANISM',0,0);
+    // Hairline highlight on top edge of cut
+    ctx.strokeStyle=`hsl(${pal.wallH+6},18%,38%)`;ctx.lineWidth=0.8;ctx.strokeText('VOLCANISM',0,0);
+    // Small scratch marks below the word (like someone traced it multiple times)
+    ctx.strokeStyle=`hsl(${pal.wallH},10%,22%)`;ctx.lineWidth=0.6;
+    ctx.beginPath();ctx.moveTo(0,fontSize*0.78);ctx.lineTo(fontSize*4.5,fontSize*0.72);ctx.stroke();
+    ctx.restore();
+
+    // Bottom prompt bar
+    const barH=52,barY=H-barH;
+    ctx.fillStyle='rgba(0,0,0,0.92)';ctx.fillRect(0,barY,W,barH);
+    ctx.strokeStyle='#553300';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(0,barY+1);ctx.lineTo(W,barY+1);ctx.stroke();
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    const mid=barY+barH/2;
+    if(!game.sidePassageTorchTaken){
+        ctx.fillStyle='#ccaa33';ctx.font=`bold 13px 'Courier New',monospace`;
+        ctx.fillText('a torch burns on the wall.',W/2,mid-10);
+        ctx.fillStyle='#664422';ctx.font=`11px 'Courier New',monospace`;
+        ctx.fillText('[ PRESS ENTER TO TAKE THE TORCH ]',W/2,mid+10);
+    } else {
+        ctx.fillStyle='#ffdd55';ctx.font=`bold 13px 'Courier New',monospace`;
+        ctx.fillText('torch replaced.',W/2,mid-10);
+        ctx.fillStyle='#664422';ctx.font=`11px 'Courier New',monospace`;
+        ctx.fillText('[ PRESS ENTER TO LEAVE ]',W/2,mid+10);
+    }
+}
+
+function loop(){update();drawTunnel();drawDoors();drawSidePassage();drawPassageRoom();drawWallTorch();drawHallwaySlips();drawExitPortal();drawPaperInTunnel();drawFade();drawHUD();requestAnimationFrame(loop);}
+
+// ═══════════════════════════════════════════════════════
+//  BLOCK CURSORS
+// ═══════════════════════════════════════════════════════
+// Name input
+const nameInput   = document.getElementById('nameInput');
+const nameDisplay = document.getElementById('nameDisplay');
+const nameCursor  = document.getElementById('nameCursor');
+nameInput.addEventListener('input',()=>{ nameDisplay.textContent=nameInput.value; });
+nameInput.addEventListener('focus',()=>nameCursor.classList.add('active'));
+nameInput.addEventListener('blur', ()=>nameCursor.classList.remove('active'));
+document.getElementById('nameTermWrap').addEventListener('click',()=>nameInput.focus());
+
+// Player answer input
+const playerAnswer  = document.getElementById('playerAnswer');
+const playerDisplay = document.getElementById('playerDisplay');
+const playerCursor  = document.getElementById('playerCursor');
+playerAnswer.addEventListener('input',()=>{ playerDisplay.textContent=playerAnswer.value; });
+playerAnswer.addEventListener('focus',()=>playerCursor.classList.add('active'));
+playerAnswer.addEventListener('blur', ()=>playerCursor.classList.remove('active'));
+document.getElementById('playerTermWrap').addEventListener('click',()=>playerAnswer.focus());
+
+// ═══════════════════════════════════════════════════════
+//  KEYBOARD ROUTING
+// ═══════════════════════════════════════════════════════
+window.addEventListener('keydown',e=>{
+    const answerFocused = document.activeElement===playerAnswer;
+    const nameFocused   = document.activeElement===nameInput;
+
+    if (appScreen==='title') {
+        if (e.code==='Enter'){e.preventDefault();titleHandleEnter();} return;
+    }
+    if (appScreen==='instructions') {
+        if (e.code==='Enter'){e.preventDefault();instrHandleEnter();} return;
+    }
+    if (appScreen==='name') {
+        if (e.code==='Enter'){e.preventDefault();nameHandleEnter();} return;
+    }
+
+    // Paper overlay – CTRL opens (if collected), Enter/Escape closes
+    if(appScreen==='game'){
+        if(e.key==='Control'&&!e.repeat){
+            e.preventDefault();
+            if(game.paperCollected&&!game.paperShowing) showPaper();
+            return;
+        }
+        if(game.paperShowing){
+            if(e.code==='Enter'||e.code==='Escape'){
+                e.preventDefault();
+                if(!game.paperCollected) collectPaper(); else hidePaper();
+            }
+            return;
+        }
+    }
+
+    // DEBUG: Shift+2 → jump to final door
+    if(e.code==='Digit2'&&e.shiftKey&&appScreen==='game'){
+        e.preventDefault();
+        game.doorsOpen=game.processes.length-1;
+        game.doorIndex=game.processes.length-1;
+        game.inDialog=false; game.correctPending=false;
+        game.doorFading=false; game.fadeAlpha=0; game.fadeDir=0;
+        clearConvo(); convoWrap.classList.remove('show');
+        while(game.doorPositions.length<=game.doorIndex+2){
+            const last=game.doorPositions[game.doorPositions.length-1]||0;
+            game.doorPositions.push(genDoorPos(last));
+            game.doorEyeHues.push(Math.random()*360|0);
+        }
+        game.pos=game.doorPositions[game.doorIndex]-200;
+        return;
+    }
+
+    // Final boss quiz - A/B/C/D answers
+    if(appScreen==='game'&&game.exitShowing&&game.finalBossActive&&!game.finalBossDefeated){
+        const k=e.key.toUpperCase();
+        if('ABCD'.includes(k)&&k.length===1){e.preventDefault();handleFinalQuizAnswer(k);return;}
+    }
+
+    // Gremlin greeting (first door intro)
+    if(appScreen==='game'&&game.greetingActive){
+        if(e.code==='Enter'){e.preventDefault();greetHandleEnter();}
+        return;
+    }
+
+    // Slip paper pickup / advance
+    if(appScreen==='game'&&!game.inDialog&&!game.slipShowing&&game.slipNearbyIdx>=0&&e.code==='Enter'){
+        e.preventDefault(); showSlip(game.slipNearbyIdx); return;
+    }
+    if(appScreen==='game'&&game.slipShowing&&e.code==='Enter'){
+        e.preventDefault(); advanceSlip(); return;
+    }
+
+    // Side passage – enter
+    if(appScreen==='game'&&game.sidePassageNear&&!game.sidePassageActive&&!game.sidePassageVisited&&e.code==='Enter'){
+        e.preventDefault(); game.sidePassageActive=true; return;
+    }
+    // Side passage – gather torch / leave
+    if(appScreen==='game'&&game.sidePassageActive&&e.code==='Enter'){
+        e.preventDefault();
+        if(!game.sidePassageTorchTaken){ game.sidePassageTorchTaken=true; game.torch=TORCH_MAX; }
+        else { game.sidePassageActive=false; game.sidePassageVisited=true; }
+        return;
+    }
+    // Wall torch pickup
+    if(appScreen==='game'&&game.wallTorchShowing&&!game.inDialog&&e.code==='Enter'){
+        e.preventDefault(); collectWallTorch(); return;
+    }
+
+    // game
+    if (e.code==='Space') {
+        if (answerFocused) return;
+        e.preventDefault();
+        // dismiss the space hint on first press
+        const sh=document.getElementById('spaceHint');
+        if(sh.classList.contains('active')&&!sh.classList.contains('fade')){
+            sh.classList.add('fade');
+            sh.addEventListener('transitionend',()=>sh.classList.remove('active'),{once:true});
+        }
+        if (game.gameOver||game.exitDone){location.reload();return;}
+        if (game.exitShowing) return;
+        if (!game.inDialog&&!game.sidePassageActive&&game.fadeDir===0&&game.fadeAlpha===0) game.pos+=STEP;
+    }
+    if ((e.code==='Enter'||(e.code==='Space'&&answerFocused))&&game.inDialog&&answerFocused&&!isGremlinTyping) {
+        e.preventDefault();
+        const val=playerAnswer.value;
+        if (val.trim()) handleInput(val);
+    }
+});
+
+// ═══════════════════════════════════════════════════════
+//  BOOT
+// ═══════════════════════════════════════════════════════
+loadProcesses().then(()=>{loop();startTitle();});
+</script>
+</body>
+</html>

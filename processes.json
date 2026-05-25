@@ -1,0 +1,869 @@
+{
+  "geoscience_processes": [
+    {
+      "id": "volcanism",
+      "prompt": "Molten rock from deep within the Earth forces its way to the surface, building mountains, islands, and new landforms while releasing gases and ash into the atmosphere. What process is this?",
+      "alternative_prompts": [
+        "Hawaii and Iceland owe their very existence to this process, which punches through Earth's crust and piles up material until entire islands rise from the ocean floor. What process is this?",
+        "This process releases sulfur dioxide, water vapor, and carbon dioxide into the air while simultaneously producing new rock - it has shaped Earth's surface and atmosphere since the planet formed. What process is this?",
+        "When pressure in a magma chamber exceeds what the overlying rock can contain, this violent or slow-moving process delivers material from depth to the surface, sometimes explosively. What process is this?"
+      ],
+      "buzzwords": [
+        "magma",
+        "lava",
+        "eruption",
+        "magma chamber",
+        "cinder cone",
+        "ash cloud",
+        "hotspot",
+        "shield volcano",
+        "stratovolcano",
+        "vent",
+        "caldera",
+        "igneous rock"
+      ],
+      "misspellings": [
+        "vulcanism",
+        "volcanisim",
+        "volcanicsm",
+        "volkenism",
+        "volcenism",
+        "volacnism",
+        "volcanizm",
+        "volcanisme",
+        "volcanism",
+        "volkanism",
+        "volcanisem"
+      ]
+    },
+    {
+      "id": "sea_floor_spreading",
+      "prompt": "At underwater mountain ranges, two plates pull apart and molten material wells up to fill the gap, continuously creating new oceanic crust and pushing older crust outward. What process is this?",
+      "alternative_prompts": [
+        "Symmetrical patterns of magnetic stripes preserved in oceanic rock on either side of underwater mountain chains provided the first strong evidence for this process. What process is this?",
+        "The Atlantic Ocean is getting wider every year because of this process occurring along a ridge that runs nearly the full length of the ocean floor. What process is this?",
+        "Pillow-shaped basalt formations found on the deep ocean floor are a direct product of this process, which constantly renews the oceanic crust from below. What process is this?"
+      ],
+      "buzzwords": [
+        "mid-ocean ridge",
+        "divergent boundary",
+        "rift zone",
+        "new crust",
+        "basalt",
+        "magnetic striping",
+        "Atlantic Ocean widening",
+        "oceanic plate",
+        "tectonic plates",
+        "Harry Hess",
+        "plate separation"
+      ],
+      "misspellings": [
+        "seafloor spreading",
+        "sea floor spreding",
+        "sea floor spredding",
+        "sea floor spraeding",
+        "sea floor spreeding",
+        "sea flor spreading",
+        "sea floor speading",
+        "seafloor spreding",
+        "sea floor spreadng",
+        "sea-floor spreading",
+        "sea floor spreaing",
+        "sea floor spreeding"
+      ]
+    },
+    {
+      "id": "subduction",
+      "prompt": "When two tectonic plates collide, the denser one is forced downward beneath the other, sinking deep into the mantle where it melts and is recycled. What process is this?",
+      "alternative_prompts": [
+        "The deepest ocean trenches on Earth - including the Mariana Trench - are formed at the leading edge of this process as one plate dives beneath another. What process is this?",
+        "This process is responsible for some of the world's most powerful earthquakes and volcanic arcs, as a sinking slab releases water that lowers the melting point of surrounding rock. What process is this?",
+        "Without this process, Earth's crust would grow indefinitely - it acts as the recycling mechanism that returns oceanic crust back into the mantle over millions of years. What process is this?"
+      ],
+      "buzzwords": [
+        "convergent boundary",
+        "subduction zone",
+        "oceanic trench",
+        "descending plate",
+        "mantle recycling",
+        "deep-focus earthquake",
+        "denser plate sinks",
+        "volcanic arc",
+        "ocean plate dives under",
+        "Ring of Fire",
+        "deep earthquakes"
+      ],
+      "misspellings": [
+        "subdution",
+        "subducktion",
+        "subducion",
+        "subdukcion",
+        "subducshun",
+        "subducsion",
+        "subduchion",
+        "subducton",
+        "subdukshun",
+        "subducshin",
+        "subductoin",
+        "subducktion"
+      ]
+    },
+    {
+      "id": "convection",
+      "prompt": "Hotter, less dense material rises while cooler, denser material sinks, creating circulating currents that transfer heat and drive the movement of Earth's plates. What process is this?",
+      "alternative_prompts": [
+        "You can observe a small-scale version of this process in a pot of boiling soup - the same principle operates in Earth's mantle and in the atmosphere. What process is this?",
+        "This process is the engine behind plate tectonics: heat escaping from Earth's core sets up slow-moving loops in the mantle that drag crustal plates along for the ride. What process is this?",
+        "Ocean circulation patterns, weather systems, and the motion of tectonic plates are all partly driven by this process, which moves heat from warmer regions to cooler ones through physical motion. What process is this?"
+      ],
+      "buzzwords": [
+        "heat transfer",
+        "mantle currents",
+        "density difference",
+        "rising plume",
+        "sinking material",
+        "circulation",
+        "temperature difference",
+        "convection cell",
+        "asthenosphere",
+        "fluid motion",
+        "plate driver"
+      ],
+      "misspellings": [
+        "convecshun",
+        "conveksion",
+        "conveccion",
+        "covection",
+        "convetcion",
+        "convecton",
+        "conection",
+        "convexion",
+        "convectoin",
+        "convecshon",
+        "conveckion",
+        "convecsion"
+      ]
+    },
+    {
+      "id": "radioactive_decay",
+      "prompt": "Unstable atoms in rocks and minerals spontaneously break down over time, releasing energy as heat and transforming into different elements at a predictable rate - a process used to determine the age of Earth materials. What process is this?",
+      "alternative_prompts": [
+        "By measuring the ratio of a parent element to its known breakdown product in a mineral, geologists can calculate precisely how long ago that mineral crystallized. What process makes this dating possible?",
+        "This process generates a significant portion of Earth's internal heat, helping keep the mantle hot enough to flow and sustain plate tectonics billions of years after the planet formed. What process is this?",
+        "Carbon-14, uranium-238, and potassium-40 all undergo this same fundamental process at different rates, each useful for dating different materials across different timescales. What process is this?"
+      ],
+      "buzzwords": [
+        "half-life",
+        "isotopes",
+        "radiometric dating",
+        "alpha particle",
+        "beta particle",
+        "uranium",
+        "parent isotope",
+        "daughter isotope",
+        "carbon-14",
+        "potassium-argon",
+        "unstable atoms",
+        "geologic time"
+      ],
+      "misspellings": [
+        "radioaktive decay",
+        "radioactiv decay",
+        "radioactive decai",
+        "radioactive dacay",
+        "radiactive decay",
+        "radioative decay",
+        "radoactive decay",
+        "radioactve decay",
+        "radioactive decaye",
+        "raioactive decay",
+        "radioactive dekay",
+        "radiaoactive decay",
+        "radioactive decoy"
+      ]
+    },
+    {
+      "id": "weathering",
+      "prompt": "Rocks and minerals at Earth's surface are broken down or altered in place by exposure to the environment, gradually weakening and changing them without necessarily moving them. What process is this?",
+      "alternative_prompts": [
+        "This is the first step in the long journey from solid bedrock to soil - it acts on rock right where it sits, preparing material that can later be transported elsewhere. What process is this?",
+        "Over thousands of years, rain, frost, wind, and living organisms all contribute to this process, slowly reducing even the hardest granite to loose grains and clay minerals. What process is this?",
+        "Tombstone inscriptions that were crisp a century ago have become difficult to read today - this process, acting on the stone surface, is responsible. What process is this?"
+      ],
+      "buzzwords": [
+        "rock breakdown",
+        "rock breaks in place",
+        "surface exposure",
+        "disintegration",
+        "decomposition",
+        "parent material",
+        "loose rock and soil",
+        "climate",
+        "mineral alteration",
+        "soil formation"
+      ],
+      "misspellings": [
+        "wethering",
+        "weatherng",
+        "weatherign",
+        "weathring",
+        "waethering",
+        "weatherin",
+        "weathing",
+        "wetherng",
+        "wheathering",
+        "weaathering",
+        "weatherring",
+        "weatherig"
+      ]
+    },
+    {
+      "id": "chemical_weathering",
+      "prompt": "Water, oxygen, acids, and other substances react with minerals in rock, changing their chemical composition and producing new minerals or dissolved ions that weaken the rock over time. What process is this?",
+      "alternative_prompts": [
+        "When rainwater picks up carbon dioxide and becomes a weak acid, it slowly dissolves limestone - carving out caves, sinkholes, and karst landscapes through this process. What process is this?",
+        "The rusty-orange staining on exposed rock faces is evidence of this process at work: iron-bearing minerals reacting with oxygen and water to form iron oxides. What process is this?",
+        "Feldspar, one of the most common minerals in granite, is gradually converted into clay minerals by this process - explaining why soils are so rich in clay despite granite containing very little. What process is this?"
+      ],
+      "buzzwords": [
+        "oxidation",
+        "water breaks down minerals",
+        "carbonation",
+        "acid rain",
+        "dissolution",
+        "feldspar to clay",
+        "rust",
+        "carbonic acid",
+        "mineral composition changes",
+        "mineral transformation",
+        "leaching"
+      ],
+      "misspellings": [
+        "chemical wethering",
+        "chemicle weathering",
+        "chemicel weathering",
+        "kemical weathering",
+        "chemecal weathering",
+        "chimical weathering",
+        "chemicall weathering",
+        "chemical weathing",
+        "chemical weatherng",
+        "chemicale weathering",
+        "chemical wetherng",
+        "kemikal weathering",
+        "chemical waethering"
+      ]
+    },
+    {
+      "id": "physical_mechanical_weathering",
+      "prompt": "Rock is broken into smaller pieces by physical forces - such as freezing water, plant roots, or changes in temperature - without changing its chemical makeup. What process is this?",
+      "alternative_prompts": [
+        "Water seeps into a crack in a rock, freezes overnight and expands, widening the crack a tiny bit - repeated thousands of times, this eventually splits the rock apart through this process. What process is this?",
+        "The rounded, peeling layers seen on granite domes like those in Yosemite form when overlying rock is removed and pressure is released, causing the rock to expand and crack - a result of this process. What process is this?",
+        "Tree roots growing into joint cracks, burrowing animals, and repeated heating and cooling of a rock surface all contribute to this process, breaking rock apart without any chemical change. What process is this?"
+      ],
+      "buzzwords": [
+        "frost wedging",
+        "freeze-thaw",
+        "exfoliation",
+        "pressure release",
+        "abrasion",
+        "thermal expansion",
+        "root prying",
+        "joint widening",
+        "cracking and breaking",
+        "mechanical stress",
+        "fragmentation"
+      ],
+      "misspellings": [
+        "physical mecanical weathering",
+        "physical mechanicle weathering",
+        "fisical mechanical weathering",
+        "phisical mechanical weathering",
+        "physical mechanical wethering",
+        "physical mecahnical weathering",
+        "physycal mechanical weathering",
+        "physical mechanecal weathering",
+        "physical mechanical weatherng",
+        "physical mecanicle weathering",
+        "fisical mecanical weathering",
+        "physical mechanical weathing",
+        "physical mechanicall weathering",
+        "physcal mechanical weathering",
+        "physical mechnical weathering",
+        "physical mechenical weathering",
+        "phisycal mechanical weathering",
+        "physical machanical weathering",
+        "physical mechanical weatherign",
+        "physical mechanical waethering",
+        "phyiscal mechanical weathering",
+        "physical mekanical weathering",
+        "physical mechnacal weathering",
+        "phisical mecahnical weathering",
+        "physical mechanical wetherng",
+        "fisical mechanicle weathering",
+        "physycal mecanical weathering",
+        "physical mehcanical weathering",
+        "physical mechanicle wethering",
+        "physicle mechanical weathering",
+        "physical mechanical wheathering",
+        "physical mechinical weathering",
+        "phisical mechanical wethering",
+        "physical mecanicall weathering",
+        "mecanical physical weathering",
+        "physical and mechanical weathering",
+        "physical/mechanical weathering",
+        "physical weathering",
+        "physcal weathering",
+        "phisical weathering",
+        "fisical weathering",
+        "physycal weathering",
+        "phyiscal weathering",
+        "pysical weathering",
+        "physicle weathering",
+        "physial weathering",
+        "physcial weathering",
+        "phisycal weathering",
+        "fysical weathering",
+        "physical wethering",
+        "physical weatherng",
+        "physical weathing",
+        "physical weatherign",
+        "physical waethering",
+        "physical wetherng",
+        "physical wheathering",
+        "physcal wethering",
+        "phisical wethering",
+        "fisical wethering",
+        "mechanical weathering",
+        "mechancal weathering",
+        "mecanical weathering",
+        "mechanicle weathering",
+        "mechenical weathering",
+        "mechnical weathering",
+        "machanical weathering",
+        "mecahnical weathering",
+        "mehcanical weathering",
+        "mechanecal weathering",
+        "mekanical weathering",
+        "mechinical weathering",
+        "machinical weathering",
+        "mechanicall weathering",
+        "mechnacal weathering",
+        "mechanikle weathering",
+        "mechanical wethering",
+        "mechanical weatherng",
+        "mechanical weathing",
+        "mechanical weatherign",
+        "mechanical waethering",
+        "mechanical wetherng",
+        "mechancal wethering",
+        "mecanical wethering",
+        "mechanicle wethering",
+        "phiscal mechanical weathering",
+        "physical mechankal weathering",
+        "physical mechanical wetherring",
+        "physical meccanical weathering",
+        "pysical mechanical weathering"
+      ]
+    },
+    {
+      "id": "erosion",
+      "prompt": "Weathered rock and sediment are picked up and carried away from their original location by moving water, wind, ice, or gravity. What process is this?",
+      "alternative_prompts": [
+        "The Grand Canyon was carved over millions of years as the Colorado River continuously performed this process, carrying away enormous volumes of rock and sediment downstream. What process is this?",
+        "Without vegetation to anchor the soil, farmland becomes vulnerable to this process - wind and rain can strip away the topsoil that took centuries to form. What process is this?",
+        "Glaciers are powerful agents of this process, grinding bedrock beneath them and dragging boulders hundreds of miles from their origin before depositing them elsewhere. What process is this?"
+      ],
+      "buzzwords": [
+        "sediment transport",
+        "runoff",
+        "glacial carving",
+        "wind erosion",
+        "mass wasting",
+        "gully formation",
+        "canyon cutting",
+        "stream load",
+        "coastal erosion",
+        "wind carries particles",
+        "agent of erosion"
+      ],
+      "misspellings": [
+        "errosion",
+        "erosoin",
+        "eroshun",
+        "eroshin",
+        "erusion",
+        "erorsion",
+        "erosien",
+        "erushion",
+        "erozion",
+        "erosian",
+        "erosoin",
+        "eroshon"
+      ]
+    },
+    {
+      "id": "deposition",
+      "prompt": "Sediment and other transported material lose energy and are dropped by the agent carrying them, accumulating in layers to form new landforms or sedimentary sequences. What process is this?",
+      "alternative_prompts": [
+        "Where a fast-moving river meets a still lake or ocean, it slows abruptly and drops its sediment load, building a fan-shaped landform outward over time through this process. What process is this?",
+        "The flat, fertile plains found alongside rivers are built up by repeated flooding events - each flood leaves behind a thin layer of sediment through this process, gradually raising the land surface. What process is this?",
+        "Sedimentary rock would not exist without this process: grains of sand, mud, and shell fragments settle out of water or air in layers that eventually harden into stone. What process is this?"
+      ],
+      "buzzwords": [
+        "sediment settling",
+        "alluvial fan",
+        "delta formation",
+        "sand dune",
+        "floodplain",
+        "graded bedding",
+        "till",
+        "wind-blown sediment",
+        "lithification",
+        "strata",
+        "sorting"
+      ],
+      "misspellings": [
+        "depostion",
+        "deposision",
+        "depositon",
+        "depossition",
+        "depotion",
+        "depozition",
+        "depostition",
+        "deposiion",
+        "deposition",
+        "depositoin",
+        "deposishun",
+        "depasition",
+        "depostion"
+      ]
+    },
+    {
+      "id": "infiltration",
+      "prompt": "Water from rain or snowmelt seeps downward through the soil and rock surface, moving into the ground rather than flowing over the land. What process is this?",
+      "alternative_prompts": [
+        "This process is why paved cities flood more easily than forests - concrete and asphalt block the pathway that allows water to move downward into the ground. What process is this?",
+        "Groundwater wells and underground aquifers depend entirely on this process to replenish their water supply from rainfall above. What process is this?",
+        "Sandy soils allow this process to occur rapidly, while compacted clay soils slow it dramatically - the rate at which it happens determines how much water stays on the surface after a storm. What process is this?"
+      ],
+      "buzzwords": [
+        "groundwater recharge",
+        "permeability",
+        "porosity",
+        "soil absorption",
+        "water table",
+        "aquifer",
+        "seepage",
+        "water seeps underground",
+        "soil saturation",
+        "subsurface flow"
+      ],
+      "misspellings": [
+        "infeltration",
+        "infiltartion",
+        "infiltrasion",
+        "infultration",
+        "infiltrashun",
+        "infilration",
+        "infitration",
+        "inflitration",
+        "infiltraton",
+        "infiltrashon",
+        "infeltrasion",
+        "infiltraiton",
+        "infeltartion"
+      ]
+    },
+    {
+      "id": "runoff",
+      "prompt": "Water that cannot soak into the ground flows across the surface, collecting into streams and rivers as it moves downhill toward lower elevations. What process is this?",
+      "alternative_prompts": [
+        "After a heavy rain on a steep, paved hillside, water sheets across the surface and rushes into gutters and storm drains - this movement of water across the land surface is called what process?",
+        "This process is a major driver of erosion: as water moves across the land it picks up sediment, carves gullies, and eventually feeds rivers that carry material to the sea. What process is this?",
+        "When the ground is already saturated or frozen, even light rainfall cannot soak in and instead travels across the surface - this is an example of what process? What process is this?"
+      ],
+      "buzzwords": [
+        "surface flow",
+        "overland flow",
+        "stream discharge",
+        "watershed",
+        "drainage basin",
+        "impervious surface",
+        "flood",
+        "hard surfaces increase flow",
+        "water flows to rivers",
+        "sheet flow"
+      ],
+      "misspellings": [
+        "run off",
+        "run-off",
+        "runof",
+        "ruunoff",
+        "rnuoff",
+        "runofff",
+        "runoff",
+        "runnoff",
+        "runof",
+        "runoph"
+      ]
+    },
+    {
+      "id": "evaporation",
+      "prompt": "Liquid water at Earth's surface absorbs energy and converts to water vapor, entering the atmosphere as part of the ongoing movement of water through the environment. What process is this?",
+      "alternative_prompts": [
+        "On a hot day, puddles left by morning rain disappear by afternoon - the sun's energy drives this process, converting liquid water into invisible water vapor that rises into the air. What process is this?",
+        "The Dead Sea is shrinking partly because this process removes water from its surface faster than rivers can replenish it in the arid climate of the Middle East. What process is this?",
+        "This process is responsible for moving the majority of water from Earth's oceans into the atmosphere, fueling the water cycle that ultimately delivers rain and snow to the continents. What process is this?"
+      ],
+      "buzzwords": [
+        "water vapor",
+        "solar energy",
+        "phase change",
+        "liquid to gas",
+        "humidity",
+        "water cycle",
+        "ocean surface",
+        "heat absorbed from surroundings",
+        "atmospheric moisture",
+        "hydrologic cycle"
+      ],
+      "misspellings": [
+        "evaportaion",
+        "evaporaton",
+        "evaopration",
+        "evapration",
+        "evaporashun",
+        "evaporaion",
+        "vaporation",
+        "evaporatoin",
+        "evaportation",
+        "evaporasion",
+        "evaporaition",
+        "evaparation",
+        "evaperation"
+      ]
+    },
+    {
+      "id": "condensation",
+      "prompt": "Water vapor in the atmosphere cools and converts back into liquid water, forming clouds, fog, or dew as the moisture becomes visible. What process is this?",
+      "alternative_prompts": [
+        "On a cold morning, the outside of a glass of ice water becomes wet - the surrounding air cools near the glass surface and undergoes this process, depositing liquid droplets. What process is this?",
+        "Clouds are the most visible result of this process: rising air cools, reaches its dew point, and water vapor transforms into the tiny suspended droplets that make clouds visible. What process is this?",
+        "Fog forms on cool, humid nights when the surface temperature drops enough that the air can no longer hold all its moisture in vapor form - this process then makes the water visible. What process is this?"
+      ],
+      "buzzwords": [
+        "cloud formation",
+        "dew point",
+        "water droplets",
+        "gas to liquid",
+        "relative humidity",
+        "water clings to tiny particles",
+        "fog",
+        "cooling air",
+        "atmospheric water",
+        "phase change"
+      ],
+      "misspellings": [
+        "condesnation",
+        "condensaion",
+        "condinsation",
+        "condenstion",
+        "condensashun",
+        "condensaton",
+        "condesation",
+        "condinsasion",
+        "condensatin",
+        "condensasion",
+        "condinsashun",
+        "condensatoin",
+        "condencation"
+      ]
+    },
+    {
+      "id": "precipitation",
+      "prompt": "Water in the atmosphere falls to Earth's surface in liquid or solid form when cloud droplets combine and grow heavy enough to descend. What process is this?",
+      "alternative_prompts": [
+        "Whether it falls as rain, snow, sleet, or hail, this process returns atmospheric water to Earth's surface and is the primary input of freshwater to rivers, lakes, and groundwater. What process is this?",
+        "When cloud droplets collide and merge repeatedly until they are too heavy to remain suspended, gravity pulls them to the surface through this process. What process is this?",
+        "Mountain ranges force moist air upward, cooling it until this process occurs on the windward slope - leaving the leeward side much drier in what is called a rain shadow. What process is this?"
+      ],
+      "buzzwords": [
+        "rain",
+        "snow",
+        "sleet",
+        "hail",
+        "rainfall",
+        "water cycle",
+        "cloud droplets",
+        "atmospheric moisture",
+        "storm",
+        "accumulation"
+      ],
+      "misspellings": [
+        "presipitation",
+        "percipitation",
+        "precipitaion",
+        "precipation",
+        "precipitashun",
+        "precipitatoin",
+        "preciptiation",
+        "precipitasion",
+        "preecipitation",
+        "precipitaiton",
+        "presipitasion",
+        "precipitatoin",
+        "precipittion",
+        "percipitasion"
+      ]
+    },
+    {
+      "id": "transpiration",
+      "prompt": "Plants draw water up through their roots and release it as vapor through tiny pores in their leaves, returning moisture to the atmosphere. What process is this?",
+      "alternative_prompts": [
+        "A large oak tree can release hundreds of liters of water into the air on a summer day - this biological process makes forests significant contributors to local humidity and rainfall patterns. What process is this?",
+        "Deforestation reduces the amount of water returned to the atmosphere in this way, which can alter regional rainfall patterns and intensify droughts downstream. What process depends on healthy vegetation?",
+        "This process cools plants in much the same way sweating cools humans - water vapor exits through leaf pores, carrying heat away as it evaporates into the surrounding air. What process is this?"
+      ],
+      "buzzwords": [
+        "stomata",
+        "plant water loss",
+        "leaf pores",
+        "water vapor",
+        "vegetation",
+        "evapotranspiration",
+        "canopy",
+        "root uptake",
+        "water cycle",
+        "photosynthesis link"
+      ],
+      "misspellings": [
+        "transipration",
+        "transpiraton",
+        "transpirashun",
+        "transpirtion",
+        "transpiraion",
+        "transperation",
+        "transpirasion",
+        "transspiration",
+        "transpirasion",
+        "transpiraiton",
+        "transipiration",
+        "transpirashon",
+        "transpiratin",
+        "evapotraspiration",
+        "evapotranspiration",
+        "evapotranspirashun",
+        "evapotranspirtion",
+        "evapotranspiraion",
+        "evapotransperation"
+      ]
+    },
+    {
+      "id": "carbon_cycling",
+      "prompt": "Carbon atoms move continuously between the atmosphere, oceans, living organisms, soils, and rocks through a series of biological, chemical, and geological pathways that regulate Earth's climate. What process is this?",
+      "alternative_prompts": [
+        "The same carbon atom in the CO2 you exhale today may have once been locked in a limestone rock, dissolved in ancient seawater, or part of a dinosaur's bone - all due to this ongoing process. What process is this?",
+        "When humans burn fossil fuels, they accelerate one part of this process, releasing carbon that was stored underground for millions of years back into the atmosphere in just decades. What process is this?",
+        "Photosynthesis pulls carbon out of the air, respiration puts it back, and geological processes store or release it over millions of years - together these form what process? What process is this?"
+      ],
+      "buzzwords": [
+        "CO2",
+        "photosynthesis",
+        "respiration",
+        "carbon sequestration",
+        "fossil fuels",
+        "carbonate rocks",
+        "greenhouse gas",
+        "ocean uptake",
+        "decomposition",
+        "carbon reservoir",
+        "carbon moves between land, air, and sea"
+      ],
+      "misspellings": [
+        "carbon cicling",
+        "carbon cycleing",
+        "carbon cykling",
+        "carbon cyceling",
+        "carbin cycling",
+        "carbone cycling",
+        "carbon cyclng",
+        "carbon cikeling",
+        "carben cycling",
+        "carbon cikling",
+        "carbon sycling",
+        "karbon cycling",
+        "carbon cycing",
+        "carbon cycle"
+      ]
+    },
+    {
+      "id": "ocean_acidification",
+      "prompt": "As the ocean absorbs excess carbon dioxide from the atmosphere, a chemical reaction lowers the pH of seawater, making it more acidic and threatening marine organisms that build shells or skeletons. What process is this?",
+      "alternative_prompts": [
+        "Coral reefs, oysters, and pteropods are all at risk because rising CO2 levels in the atmosphere are changing seawater chemistry through this process, making it harder for them to build their hard structures. What process is this?",
+        "The ocean has absorbed roughly a third of all human CO2 emissions - a helpful buffer for climate, but one that triggers this process, altering marine chemistry in ways not seen for millions of years. What process is this?",
+        "When CO2 dissolves in seawater it forms carbonic acid, which then releases hydrogen ions that lower the water's pH - this chain of reactions defines what process? What process is this?"
+      ],
+      "buzzwords": [
+        "CO2 absorption",
+        "carbonic acid",
+        "pH decrease",
+        "coral bleaching",
+        "shell dissolution",
+        "marine chemistry",
+        "coral skeletons",
+        "calcification",
+        "seawater chemistry",
+        "climate change",
+        "hydrogen ions"
+      ],
+      "misspellings": [
+        "ocean acidifcation",
+        "ocean acidiification",
+        "ocean acidifaction",
+        "ocean acidafication",
+        "ocean acideification",
+        "oceon acidification",
+        "ocean acedification",
+        "ocean acidificsation",
+        "ocean acidifacation",
+        "ocean acidificasion",
+        "ocean acidifcasion",
+        "ocian acidification",
+        "ocean asidification",
+        "acidification",
+        "acid ocean",
+        "acid"
+      ]
+    },
+    {
+      "id": "outgassing",
+      "prompt": "Gases trapped within Earth's interior are released to the surface through volcanic activity and other geological processes, and this is how Earth's early atmosphere and oceans originally formed. What process is this?",
+      "alternative_prompts": [
+        "Earth did not always have an atmosphere - the nitrogen, carbon dioxide, and water vapor that formed the earliest air were slowly released from the planet's interior through this process over billions of years. What process is this?",
+        "Every time a volcano erupts, it is also performing this process - releasing gases that were chemically bound in rock deep below the surface into the open atmosphere above. What process is this?",
+        "Scientists studying other rocky planets like Venus and Mars look at their atmospheres for evidence of this process, which is the primary way a planet builds its gaseous envelope from the inside out. What process is this?"
+      ],
+      "buzzwords": [
+        "volcanic gases",
+        "early atmosphere",
+        "water vapor release",
+        "CO2 release",
+        "primordial atmosphere",
+        "degassing",
+        "interior gases",
+        "nitrogen",
+        "sulfur dioxide",
+        "ocean origin",
+        "planetary atmosphere"
+      ],
+      "misspellings": [
+        "out gassing",
+        "out-gassing",
+        "outgasing",
+        "outgassng",
+        "outgazing",
+        "outgassin",
+        "outgasig",
+        "outgassig",
+        "outgas sing",
+        "outgassng",
+        "outgasseing",
+        "outgazing"
+      ]
+    },
+    {
+      "id": "nuclear_fusion",
+      "prompt": "In the core of the Sun, hydrogen atoms are forced together under extreme heat and pressure to form helium, releasing enormous amounts of energy that ultimately drives weather, climate, and life on Earth. What process is this?",
+      "alternative_prompts": [
+        "The Sun converts about 600 million tons of hydrogen into helium every second through this process, releasing energy equivalent to billions of nuclear bombs - all of which begins the energy chain that powers life on Earth. What process is this?",
+        "This process requires temperatures of about 15 million degrees Celsius to overcome the repulsion between positively charged nuclei and force them close enough to merge and release energy. What process is this?",
+        "Scientists on Earth are working to harness this same process that powers stars, hoping that fusing hydrogen isotopes in a reactor could provide virtually limitless clean energy. What process is this?"
+      ],
+      "buzzwords": [
+        "solar energy source",
+        "hydrogen to helium",
+        "stellar core",
+        "extreme pressure",
+        "extreme temperature",
+        "energy release",
+        "E=mc²",
+        "powers the Sun",
+        "solar radiation",
+        "thermonuclear",
+        "mass-energy conversion"
+      ],
+      "misspellings": [
+        "nuclear fushion",
+        "nuclear fusoin",
+        "nuculear fusion",
+        "nuclear fision",
+        "nucleur fusion",
+        "nuclear fusin",
+        "nucular fusion",
+        "nuclear fussion",
+        "nucler fusion",
+        "nulcear fusion",
+        "nuclear fushin",
+        "nuclear fushon",
+        "nucular fushion",
+        "fusion",
+        "fushion",
+        "fusoin",
+        "fusson",
+        "fushin",
+        "fushon",
+        "fuson"
+      ]
+    },
+    {
+      "id": "impact_cratering",
+      "prompt": "A fast-moving space rock collides with a planetary surface, releasing enormous energy that excavates a circular depression and can scatter material across vast distances - reshaping the landscape in an instant. What process is this?",
+      "alternative_prompts": [
+        "The Moon's heavily pitted surface is a record of this process acting over billions of years - Earth experiences it too, but our active geology and atmosphere erase most of the evidence. What process is this?",
+        "Sixty-six million years ago, a ten-kilometer-wide object struck what is now Mexico's Yucatan Peninsula, and this process triggered wildfires, a global dust cloud, and ultimately a mass extinction. What process is this?",
+        "When geologists find shatter cones, shocked quartz, and circular rock formations at a site, they recognize these as evidence that this process occurred there millions of years ago. What process is this?"
+      ],
+      "buzzwords": [
+        "meteorite",
+        "asteroid",
+        "falling space rock",
+        "debris thrown outward",
+        "fractured rock",
+        "rock changed by collision",
+        "crater rim",
+        "impactor",
+        "mass extinction",
+        "lunar craters",
+        "melted rock at crater",
+        "Chicxulub"
+      ],
+      "misspellings": [
+        "impact craytering",
+        "impact createring",
+        "impact craeting",
+        "impact craitering",
+        "impakt cratering",
+        "impact cractering",
+        "inpact cratering",
+        "impact crtering",
+        "impact cratering",
+        "impact crattering",
+        "impackt cratering",
+        "impact cratering",
+        "impact caterring",
+        "impact craters",
+        "cratering",
+        "crater",
+        "craters",
+        "cratering",
+        "craterng",
+        "craterin",
+        "craterign",
+        "cratering"
+      ]
+    }
+  ]
+}
