@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TUNNEL OF DOOM</title>
+    <title>TUNNEL OF GEOSCIENCE PROCESSES</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -68,7 +68,7 @@
         #instrContent { display:flex; flex-direction:column; gap:0; width:100%; }
         .instr-line {
             font-size: clamp(13px,2.6vmin,18px);
-            color: #cc9944;
+            color: #c1bdff;
             letter-spacing: 1.5px;
             line-height: 1.7;
             text-align: left;
@@ -160,7 +160,7 @@
         #convoWrap {
             display: none;
             position: absolute;
-            top: 10px; left: 10px; right: 10px;
+            top: 38px; left: 10px; right: 10px;
             max-height: 52%;
             z-index: 30;
             flex-direction: row;
@@ -315,13 +315,13 @@
         .g-line {
             font-size: clamp(12px,2.3vmin,15px);
             line-height: 2.0;
-            color: #ccaa33;
+            color: #ff3131;
             letter-spacing: 0.5px;
             min-height: 1.6em;
             -webkit-font-smoothing: none;
         }
-        .g-line.dim   { color: #887733; font-style: italic; }
-        .g-line.bright{ color: #ffdd55; font-weight: bold; }
+        .g-line.dim   { color: #ab0000; font-style: italic; }
+        .g-line.bright{ color: #ff6060; font-weight: bold; }
         .g-line.eg    { color: #66cc88; font-size: clamp(11px,2vmin,13px);
                         letter-spacing: 2px; min-height: 1.4em; }
         .g-line.gap   { min-height: 0.65em; }
@@ -561,7 +561,7 @@
     </div>
 
     <!-- Space hint -->
-    <div id="spaceHint">press space to move forward</div>
+    <div id="spaceHint">press space to move forward \n You will learn more with each pass through the tunnel - you will retain your notepad and coins.\n work with a notebook and a partner to win.</div>
 
     <!-- Final boss quiz -->
     <div id="finalQuizOverlay">
@@ -682,7 +682,7 @@ function startTitle() {
     titlePhase='title';
     document.getElementById('titleText').textContent='';
     document.getElementById('titleSub').textContent='';
-    tw.start(document.getElementById('titleText'),'TUNNEL OF DOOM',90,()=>{
+    tw.start(document.getElementById('titleText'),'TUNNEL OF GEOSCIENCE PROCESSES',90,()=>{
         titlePhase='sub';
         setTimeout(()=>{
             tw.start(document.getElementById('titleSub'),'[ press enter ]',55,()=>{titlePhase='wait';});
@@ -1213,7 +1213,7 @@ function handleInput(raw) {
         if(val.toLowerCase()==='cancel'){ closePurchaseDialog(); return; }
         const n=parseInt(val);
         if(!isNaN(n)&&n>=1&&n<=game.notepad.length){
-            if(game.coins<3){ qGremlin(`not enough coins — you have ${game.coins}.`,'cl-wrong'); showPlayerInput(true); return; }
+            if(game.coins<3){ qGremlin(`not enough coins - you have ${game.coins}.`,'cl-wrong'); showPlayerInput(true); return; }
             game.coins-=3;
             const name=game.notepad[n-1];
             const proc=game.processes.find(p=>p.id.replace(/_/g,' ')===name);
@@ -1726,7 +1726,7 @@ function update(){
     }
     // Slip paper early-exit
     if(game.slipShowing) return;
-    // Side passage active — block all movement, drain slowly
+    // Side passage active - block all movement, drain slowly
     if(game.sidePassageActive) return;
     // Side passage proximity
     if(game.sidePassagePos&&!game.inDialog&&!game.sidePassageActive&&!game.sidePassageVisited){
@@ -1783,7 +1783,7 @@ function endGame(outOfTorch){
 }
 
 // ╔═══════════════════════════════════════════════════════╗
-// ║  HUD  —  drawHUD()                                    ║
+// ║  HUD  -  drawHUD()                                    ║
 // ║  Canvas overlay drawn every frame on top of the scene ║
 // ║                                                       ║
 // ║  TOP BAR  (32px, shown during gremlin riddle only)    ║
@@ -2246,7 +2246,7 @@ function buildFinalQuiz() {
             const opts=[proc,...wrong.slice(0,3)]; shuffle(opts);
             const prompts=[proc.prompt,...(proc.alternative_prompts||[])];
             shuffle(prompts);
-            return {proc, opts, correct:opts.indexOf(proc), prompts, promptIdx:0};
+            return {proc, opts, correct:opts.indexOf(proc), prompts, promptIdx:0, firstAttempt:true};
         }),
         idx:0, locked:false
     };
@@ -2280,7 +2280,10 @@ function handleFinalQuizAnswer(letter) {
     game.finalQuiz.locked=true;
     const fb=document.getElementById('fqFeedback');
     if(chosen===q.correct){
-        fb.style.color='#44ff88'; fb.textContent='CORRECT!';
+        const earnedCoin=q.firstAttempt;
+        if(earnedCoin) game.coins++;
+        fb.style.color='#44ff88';
+        fb.textContent=earnedCoin?'CORRECT!  +1 coin':'CORRECT.';
         setTimeout(()=>{
             game.finalQuiz.idx++;
             if(game.finalQuiz.idx>=FINAL_QUIZ_COUNT){
@@ -2300,10 +2303,13 @@ function handleFinalQuizAnswer(letter) {
             'Incorrect.  Perhaps this angle will help you.',
             'The bureaucracy is not impressed.  Read carefully.',
         ];
+        q.firstAttempt=false;
         fb.style.color='#ff4422';
         fb.textContent=taunts[Math.floor(Math.random()*taunts.length)];
-        // advance to next prompt for the same question
+        // advance to next prompt and reshuffle options for next attempt
         q.promptIdx++;
+        shuffle(q.opts);
+        q.correct=q.opts.indexOf(q.proc);
         setTimeout(()=>{
             game.finalQuiz.locked=false;
             showFinalQuizQuestion();
@@ -2463,7 +2469,7 @@ function drawSidePassage(){
     if(relDepth<=0||relDepth>TORCH_DEPTH*1.1)return;
     const activeDoorZ=(game.exitPos||game.doorFading)?Infinity:(game.doorPositions[game.doorIndex]??Infinity);
     if(game.sidePassagePos>=activeDoorZ)return;
-    const r=pRect(Math.max(1,relDepth-3)); // nudge arch in front of wall face to avoid z-fighting
+    const r=pRect(relDepth);
     const tp=(game.torch/TORCH_MAX)*game.flicker;
     const pL=wallL(relDepth,36,tp); // lighting uses true depth
     const pal=game.tunnelPalette||genTunnelPalette();
@@ -2472,7 +2478,7 @@ function drawSidePassage(){
     const hx=r.x+r.w;
     const hy=r.y+r.h*0.60;
 
-    // Wall "into" direction — from inner edge toward the outer-right canvas edge,
+    // Wall "into" direction - from inner edge toward the outer-right canvas edge,
     // following the perspective of the right wall face.
     const v_frac=(hy-r.y)/r.h;
     const wallFarY=v_frac*H;
@@ -2482,9 +2488,9 @@ function drawSidePassage(){
     const wux=wallDX/wallLen;  // unit vector into wall, x
     const wuy=wallDY/wallLen;  // unit vector into wall, y
 
-    // Arch dimensions — depth is capped so it never exceeds the visible wall face
+    // Arch dimensions - width matches height so the opening looks like a passage, not a slit
     const archH=r.h*0.32;
-    const archDepth=Math.min(r.h*0.08, wallLen*0.22);
+    const archDepth=Math.min(archH*0.85, wallLen*0.68);
 
     // Ambient glow from the torch inside (drawn before arch, behind it)
     if(!game.sidePassageTorchTaken){
@@ -2514,9 +2520,9 @@ function drawSidePassage(){
 
     ctx.save();
     ctx.setTransform(
-        wux*archDepth, wuy*archDepth,  // a, b  — local x-axis into wall
-        0,             -archH,         // c, d  — local y-axis upward (flipped)
-        hx,            hy+archH*0.5   // e, f  — origin at arch bottom, inner wall edge
+        wux*archDepth, wuy*archDepth,  // a, b  - local x-axis into wall
+        0,             -archH,         // c, d  - local y-axis upward (flipped)
+        hx,            hy+archH*0.5   // e, f  - origin at arch bottom, inner wall edge
     );
 
     const stoneL =Math.min(pL*1.3,24);
@@ -2543,7 +2549,7 @@ function drawSidePassage(){
     ctx.closePath();
     ctx.fill();
 
-    // Dark void — the passage opening
+    // Dark void - the passage opening
     ctx.fillStyle='#010100';
     ctx.beginPath();
     ctx.moveTo(0,0);
@@ -2783,6 +2789,7 @@ function softReset(){
 // ═══════════════════════════════════════════════════════
 function openPurchaseDialog(){
     if(game.purchaseDialogOpen) return;
+    dlg._preBuyFromDoor=game.inDialog; // remember if we interrupted a gremlin riddle
     game.purchaseDialogOpen=true;
     game.inDialog=true;
     dlg.state='buy_list';
@@ -2809,11 +2816,25 @@ function openPurchaseDialog(){
 
 function closePurchaseDialog(){
     game.purchaseDialogOpen=false;
-    game.inDialog=false;
-    dlg.state='riddle';
-    convoWrap.classList.remove('show');
-    showPlayerInput(false);
-    clearConvo();
+    if(dlg._preBuyFromDoor){
+        // Return to the gremlin riddle that was interrupted
+        dlg._preBuyFromDoor=false;
+        dlg.state='riddle';
+        game.inDialog=true;
+        clearConvo();
+        document.getElementById('playerLabel').textContent=`${game.playerName}'s response:`;
+        setPlayerInput('');
+        const clue=game.question?game.question.prompt.replace(/\s*What process is this\?$/,''):'?';
+        qGremlin(`back to it.  the clue: "${clue}"`,'cl-hint');
+        qGremlin('Type your answer or type  HINT  for another clue.','cl-hud');
+        showPlayerInput(true);
+    } else {
+        game.inDialog=false;
+        dlg.state='riddle';
+        convoWrap.classList.remove('show');
+        showPlayerInput(false);
+        clearConvo();
+    }
 }
 
 // ═══════════════════════════════════════════════════════
@@ -2933,12 +2954,12 @@ window.addEventListener('keydown',e=>{
         if(e.key>='0'&&e.key<='9'&&!e.ctrlKey&&!e.altKey){
             e.preventDefault();
             if(e.key==='0'){
-                // toggle notepad — works even during gremlin dialog
+                // toggle notepad - works even during gremlin dialog
                 game.notepadOpen=!game.notepadOpen;
             } else if(game.purchaseDialogOpen&&dlg.state==='buy_list'){
                 // direct buy selection by key press, no input field needed
                 handleInput(e.key);
-            } else if(e.key==='9'&&!game.inDialog&&!game.slipShowing&&!game.sidePassageActive&&!game.softResetting){
+            } else if(e.key==='9'&&!game.purchaseDialogOpen&&!game.slipShowing&&!game.sidePassageActive&&!game.softResetting){
                 openPurchaseDialog();
             }
             return;
