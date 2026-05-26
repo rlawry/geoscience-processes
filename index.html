@@ -947,8 +947,10 @@ function startGame() {
     appScreen='game';
     const sh=document.getElementById('spaceHint');
     sh.classList.remove('fade'); sh.classList.add('active');
-    const losses = parseInt(localStorage.getItem('doom_losses')||'0');
+    const losses  = parseInt(localStorage.getItem('doom_losses') ||'0');
+    const resets  = parseInt(localStorage.getItem('doom_resets') ||'0');
     const alreadyHave = localStorage.getItem('doom_paper')==='1';
+    const failedEnough = losses >= 3 || resets >= 3;
     Object.assign(game,{
         pos:0, torch:TORCH_MAX, doorsOpen:0, doorIndex:0,
         inDialog:false, correctPending:false, gameOver:false, question:null,
@@ -956,7 +958,7 @@ function startGame() {
         fadeAlpha:0, fadeDir:0, fadeMsg:'', fadeCallback:null,
         doorFading:false, doorFadeAlpha:1, doorPositions:[], doorEyeHues:[],
         paperCollected: alreadyHave,
-        paperInHallway: losses >= 3 && !alreadyHave,
+        paperInHallway: failedEnough && !alreadyHave,
         paperShowing: false,
         tunnelPalette: genTunnelPalette(),
         exitPos:0, exitShowing:false, exitStartTime:0, exitDone:false,
@@ -2773,6 +2775,8 @@ function softReset(){
     game.fadeMsg='YOUR TORCH HAS GONE OUT\nYou awaken at the tunnel entrance...';
     game.fadeDir=1; game.fadeAlpha=0;
     game.fadeCallback=()=>{
+        const prev=parseInt(localStorage.getItem('doom_resets')||'0');
+        localStorage.setItem('doom_resets',prev+1);
         Object.assign(game,saved,{
             pos:0, torch:TORCH_MAX, passes:MAX_PASSES,
             inDialog:false, correctPending:false,
@@ -2932,7 +2936,9 @@ window.addEventListener('keydown',e=>{
     if(appScreen==='game'){
         if(e.key==='Control'&&!e.repeat){
             e.preventDefault();
-            if(game.paperCollected&&!game.paperShowing) showPaper();
+            const _losses=parseInt(localStorage.getItem('doom_losses')||'0');
+            const _resets=parseInt(localStorage.getItem('doom_resets')||'0');
+            if(game.paperCollected&&(_losses>=3||_resets>=3)&&!game.paperShowing) showPaper();
             return;
         }
         if(game.paperShowing){
