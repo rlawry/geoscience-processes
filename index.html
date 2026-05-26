@@ -231,7 +231,7 @@
         #playerInputBox {
             display: none;
             position: absolute;
-            bottom: 44px; left: 10px; right: 10px;
+            bottom: 84px; left: 10px; right: 10px;
             background: rgba(3,1,0,0.92);
             border: 1px solid #553300;
             border-bottom: none;
@@ -351,7 +351,7 @@
         }
         #finalQuizOverlay.active { display: flex; }
         #fqProgress {
-            font-size: 10px; color: #554433; letter-spacing: 3px;
+            font-size: 10px; color: #43f927; letter-spacing: 3px;
         }
         #fqQuestion {
             font-size: clamp(11px,2vmin,13px); color: #ddc888;
@@ -414,8 +414,7 @@
             pointer-events: none;
             z-index: 30;
             justify-content: center;
-            align-items: flex-end;
-            padding-bottom: 14%;
+            align-items: center;
             font-family: 'Courier New', monospace;
             font-size: clamp(11px,2vmin,14px);
             font-weight: bold;
@@ -482,8 +481,9 @@
             opacity: 0.6;
         }
         #paperList {
-            margin: 0 0 0 18px;
+            margin: 0;
             padding: 0;
+            list-style: none;
             columns: 2;
             column-gap: 24px;
         }
@@ -576,7 +576,7 @@
         <div id="paperDoc">
             <div id="paperTitle">Secret List of<br>Geoscience Processes</div>
             <div id="paperRule"></div>
-            <ol id="paperList"></ol>
+            <ul id="paperList"></ul>
             <div id="paperPrompt"></div>
         </div>
     </div>
@@ -636,7 +636,7 @@ const DOOR_SPACING = 380;
 const RING_SPACING = 55;
 const STEP         = 26;
 const TORCH_MAX    = 1800;
-const TORCH_WALK   = 0.35;
+const TORCH_WALK   = 0.25;
 const TORCH_WAIT   = 0.06;
 const MAX_PASSES   = 3;
 const TORCH_DEPTH  = 350; // depth units at which torch light cuts off
@@ -905,13 +905,15 @@ const game = {
     paperInHallway:false, paperShowing:false, paperCollected:false,
     tunnelPalette:null,
     exitPos:0, exitShowing:false, exitStartTime:0, exitDone:false,
-    wallTorchPos:0, wallTorchCollected:false, wallTorchShowing:false,
+    wallTorches:[],
     greetingActive:false,
     finalBossActive:false, finalBossDefeated:false, finalQuiz:null,
     hallwayPapers:[], slipShowing:false, slipPhase:'', slipIdx:-1, slipNearbyIdx:-1,
     floorRocks:[],
     sidePassagePos:0, sidePassageNear:false, sidePassageActive:false,
     sidePassageTorchTaken:false, sidePassageVisited:false,
+    notepad:[], notepadDescs:{}, coins:0, notepadOpen:false, purchaseDialogOpen:false,
+    sidePassageProcessName:'', floorCoins:[], softResetting:false,
 };
 
 function genDoorPos(prev) { return prev + 700 + Math.random()*900; }
@@ -958,13 +960,15 @@ function startGame() {
         paperShowing: false,
         tunnelPalette: genTunnelPalette(),
         exitPos:0, exitShowing:false, exitStartTime:0, exitDone:false,
-        wallTorchPos:0, wallTorchCollected:false, wallTorchShowing:false,
+        wallTorches:[], floorCoins:[],
         greetingActive:false,
         finalBossActive:false, finalBossDefeated:false, finalQuiz:null,
         hallwayPapers:[], slipShowing:false, slipPhase:'', slipIdx:-1, slipNearbyIdx:-1,
         floorRocks:[],
         sidePassagePos:0, sidePassageNear:false, sidePassageActive:false,
         sidePassageTorchTaken:false, sidePassageVisited:false,
+        notepad:[], notepadDescs:{}, coins:0, notepadOpen:false, purchaseDialogOpen:false,
+        sidePassageProcessName:'', softResetting:false,
     });
     let p=0;
     for(let i=0;i<6;i++){p=genDoorPos(p);game.doorPositions.push(p);game.doorEyeHues.push(Math.random()*360|0);}
@@ -990,9 +994,34 @@ function startGame() {
             rz += RING_SPACING * 0.82 + Math.random() * 10;
         }
     }
+    // Wall torches in opening hallway (before door[0])
+    {
+        const torchEnd=game.doorPositions[0]-120;
+        const torchCount=4+Math.floor(Math.random()*3);
+        for(let i=0;i<torchCount;i++){
+            game.wallTorches.push({z:60+(torchEnd-60)*(i/Math.max(1,torchCount-1)),collected:false,showing:false});
+        }
+    }
     // Side passage in the 4th hallway (between door[2] and door[3])
     if(game.doorPositions[2]&&game.doorPositions[3]){
-        game.sidePassagePos=game.doorPositions[2]+(game.doorPositions[3]-game.doorPositions[2])*0.45;
+        game.sidePassagePos=game.doorPositions[2]+(game.doorPositions[3]-game.doorPositions[2])*0.30;
+    }
+    // Pick a random process for the side passage etching (not already in notepad)
+    if(game.processes.length>0){
+        const unused=game.processes.filter(p=>!game.notepad.includes(p.id.replace(/_/g,' ')));
+        const pool=unused.length>0?unused:game.processes;
+        game.sidePassageProcessName=pool[Math.floor(Math.random()*pool.length)].id.replace(/_/g,' ');
+    }
+    // Scatter floor coins across first 5 hallways
+    {
+        const totalCoins=12+Math.floor(Math.random()*7);
+        const segs=Math.min(5,game.doorPositions.length);
+        for(let c=0;c<totalCoins;c++){
+            const si=Math.floor(Math.random()*segs);
+            const p0=si===0?80:game.doorPositions[si-1]+100;
+            const p1=game.doorPositions[si]-100;
+            if(p1>p0) game.floorCoins.push({z:p0+Math.random()*(p1-p0),fx:0.15+0.70*Math.random(),collected:false});
+        }
     }
     // Scatter papers in initial hallways
     for(let i=0;i<game.doorPositions.length-1;i++){
@@ -1022,7 +1051,7 @@ async function loadProcesses() {
 // ═══════════════════════════════════════════════════════
 //  DIALOG SYSTEM - message queue + typewriter
 // ═══════════════════════════════════════════════════════
-const dlg = {state:'riddle', hintPool:[], hintIdx:0, attempts:0};
+const dlg = {state:'riddle', hintPool:[], hintIdx:0, attempts:0, _buyTarget:''};
 
 // message queue for gremlin lines
 const msgQ=[];
@@ -1180,6 +1209,28 @@ function handleInput(raw) {
     setPlayerInput('');
     showPlayerInput(false);
 
+    if(dlg.state==='buy_list'){
+        if(val.toLowerCase()==='cancel'){ closePurchaseDialog(); return; }
+        const n=parseInt(val);
+        if(!isNaN(n)&&n>=1&&n<=game.notepad.length){
+            if(game.coins<3){ qGremlin(`not enough coins — you have ${game.coins}.`,'cl-wrong'); showPlayerInput(true); return; }
+            game.coins-=3;
+            const name=game.notepad[n-1];
+            const proc=game.processes.find(p=>p.id.replace(/_/g,' ')===name);
+            const desc=proc?proc.prompt.replace(/\s*What process is this\?$/,''):'(no description available)';
+            game.notepadDescs[name]=desc;
+            dlg.state='buy_done';
+            qGremlin(`"${name}":`, '');
+            qGremlin(desc, 'cl-sys');
+            setTimeout(()=>closePurchaseDialog(), 5000);
+        } else {
+            qGremlin(`use the number keys 1-${game.notepad.length} to choose, or type CANCEL.`,'cl-note');
+            showPlayerInput(true);
+        }
+        return;
+    }
+    if(dlg.state==='buy_done'){ return; }
+
     if (dlg.state==='riddle') {
         if (val.toLowerCase()==='hint') {
             const h=nextHint();
@@ -1212,7 +1263,7 @@ function handleInput(raw) {
         }
         dlg.attempts++;
         if(isCloseAnswer(val,expected)){
-            qGremlin(`oooo.  sooo close.  but I'm not kind enough to accept that answer - I work for the bureaucracy, ${game.playerName} you see.`,'cl-wrong');
+            qGremlin(`oooo.  sooo close, ${game.playerName}.  but I'm not kind enough to accept that answer - I work for the bureaucracy, you see.`,'cl-wrong');
         } else {
             qGremlin(`"${val}" - WRONG! [sneers.]`,'cl-wrong');
         }
@@ -1529,11 +1580,19 @@ function drawDoors(){
             const hue=game.doorEyeHues[n]??60;
             const eyeFill=`hsl(${hue},100%,62%)`;
             const eyeGlow=`hsl(${hue},100%,50%)`;
+            // Random blink: ~3-4s open, 150ms closed; offset per door via hue seed
+            const blinkPeriod=3000+Math.sin(hue*0.83)*800;
+            const blinkT=(Date.now()+(hue*137))%blinkPeriod;
+            const blinking=blinkT<150;
+            const eyeScaleY=blinking?0.07:1.0;
             ctx.save();ctx.rect(grateX,grateY,grateW,grateH);ctx.clip();
             ctx.shadowColor=eyeGlow;ctx.shadowBlur=14;ctx.fillStyle=eyeFill;
-            for(const ex of[cx-eyeSep,cx+eyeSep]){ctx.beginPath();ctx.ellipse(ex,eyeY,eyeR*0.85,eyeR,0,0,Math.PI*2);ctx.fill();}
-            ctx.shadowBlur=0;ctx.fillStyle='#050300';
-            for(const ex of[cx-eyeSep,cx+eyeSep]){ctx.beginPath();ctx.ellipse(ex,eyeY,eyeR*0.38,eyeR*0.55,0,0,Math.PI*2);ctx.fill();}
+            for(const ex of[cx-eyeSep,cx+eyeSep]){ctx.beginPath();ctx.ellipse(ex,eyeY,eyeR*0.85,eyeR*eyeScaleY,0,0,Math.PI*2);ctx.fill();}
+            ctx.shadowBlur=0;
+            if(!blinking){
+                ctx.fillStyle='#050300';
+                for(const ex of[cx-eyeSep,cx+eyeSep]){ctx.beginPath();ctx.ellipse(ex,eyeY,eyeR*0.38,eyeR*0.55,0,0,Math.PI*2);ctx.fill();}
+            }
             ctx.restore();
         }
         const hx=cx+hw*0.55,hy=bY-archH*0.44;
@@ -1600,15 +1659,17 @@ function stepFade(){
 function showPaper(){
     game.paperShowing=true;
     const collected=game.paperCollected;
-    // Populate list once (idempotent)
+    // Rebuild list with a fresh shuffle each time so order never matches the game's door sequence
     const list=document.getElementById('paperList');
-    if(!list.children.length){
-        game.processes.forEach(p=>{
-            const li=document.createElement('li');
-            li.textContent=p.id.replace(/_/g,' ');
-            list.appendChild(li);
-        });
-    }
+    list.innerHTML='';
+    const names=game.processes.map(p=>p.id.replace(/_/g,' '));
+    // Fisher-Yates on a copy
+    for(let i=names.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[names[i],names[j]]=[names[j],names[i]];}
+    names.forEach(name=>{
+        const li=document.createElement('li');
+        li.textContent=name;
+        list.appendChild(li);
+    });
     document.getElementById('paperPrompt').textContent=
         collected?'[ press enter or esc to close ]':'[ press enter to add to inventory ]';
     document.getElementById('paperOverlay').classList.add('active');
@@ -1630,6 +1691,7 @@ function update(){
     if(game.exitShowing)return;
     if(game.greetingActive)return;
     stepFade();
+    if(game.softResetting) return;
     if(game.doorFading){
         game.doorFadeAlpha=Math.max(0,game.doorFadeAlpha-0.018);
         if(game.doorFadeAlpha<=0){
@@ -1637,10 +1699,6 @@ function update(){
             game.doorsOpen++; game.doorIndex++;
             game.inDialog=false; game.correctPending=false;
             game.tunnelPalette=genTunnelPalette();
-            // Place wall torch midway between door 10 and door 11
-            if(game.doorsOpen===10&&!game.wallTorchPos){
-                game.wallTorchPos=game.pos+360;
-            }
             // All processes beaten - set exit ahead instead of more doors
             if(game.doorsOpen>=game.processes.length){
                 game.exitPos=game.pos+480;
@@ -1649,6 +1707,11 @@ function update(){
                     const last=game.doorPositions[game.doorPositions.length-1]||0;
                     game.doorPositions.push(genDoorPos(last));
                     game.doorEyeHues.push(Math.random()*360|0);
+                }
+                // Wall torch in hall 16 (between door[14] and door[15])
+                if(game.doorIndex===15&&game.doorPositions[14]&&game.doorPositions[15]){
+                    const _p0=game.doorPositions[14],_p1=game.doorPositions[15];
+                    game.wallTorches.push({z:_p0+(_p1-_p0)*(0.40+Math.random()*0.25),collected:false,showing:false});
                 }
                 // Maybe scatter a paper in the newly extended hallway
                 const _d1=game.doorPositions[game.doorIndex+1];
@@ -1670,8 +1733,8 @@ function update(){
         const _rel=game.sidePassagePos-game.pos;
         game.sidePassageNear=_rel>0&&_rel<220;
     } else { game.sidePassageNear=false; }
-    // Torch only drains before the exit is visible (pause during paper reading)
-    if(!game.exitPos&&!game.slipShowing){
+    // Torch only drains before the exit is visible (pause during paper reading or purchase)
+    if(!game.exitPos&&!game.slipShowing&&!game.purchaseDialogOpen){
         game.torch-=game.inDialog?TORCH_WAIT:TORCH_WALK;
         if(game.torch<=0){game.torch=0;endGame(true);return;}
     }
@@ -1680,11 +1743,13 @@ function update(){
        game.fadeDir===0&&game.fadeAlpha===0&&game.pos>=PAPER_POS){
         showPaper(); return;
     }
-    // Wall torch proximity (auto-show/hide prompt)
-    if(game.wallTorchPos&&!game.wallTorchCollected){
-        const rel=game.wallTorchPos-game.pos;
-        game.wallTorchShowing=(rel>0&&rel<200&&!game.inDialog&&!game.exitShowing);
-    }
+    // Wall torches proximity (auto-show/hide prompt)
+    game.wallTorches.forEach(wt=>{
+        if(!wt.collected){
+            const rel=wt.z-game.pos;
+            wt.showing=(rel>0&&rel<200&&!game.inDialog&&!game.exitShowing);
+        }
+    });
     // Exit trigger
     if(game.exitPos&&!game.exitShowing&&game.pos>=game.exitPos){
         game.exitShowing=true;
@@ -1703,6 +1768,7 @@ function update(){
 }
 
 function endGame(outOfTorch){
+    if(outOfTorch){ softReset(); return; }
     game.gameOver=true;
     const prev=parseInt(localStorage.getItem('doom_losses')||'0');
     localStorage.setItem('doom_losses', prev+1);
@@ -1716,14 +1782,23 @@ function endGame(outOfTorch){
     document.getElementById('gameOver').classList.add('active');
 }
 
-// ═══════════════════════════════════════════════════════
-//  DRAW HUD  (rendered on canvas)
-// ═══════════════════════════════════════════════════════
+// ╔═══════════════════════════════════════════════════════╗
+// ║  HUD  —  drawHUD()                                    ║
+// ║  Canvas overlay drawn every frame on top of the scene ║
+// ║                                                       ║
+// ║  TOP BAR  (32px, shown during gremlin riddle only)    ║
+// ║    left:  GUESSES remaining                           ║
+// ║    right: "type HINT for a clue"                      ║
+// ║                                                       ║
+// ║  BOTTOM BAR  (60px, always visible)                   ║
+// ║    row 1 (28px):  TORCH fuel bar                      ║
+// ║    row 2 (32px):  COINS | [0] NOTES n | PASSES/DOORS/DEPTH ║
+// ╚═══════════════════════════════════════════════════════╝
 function drawHUD(){
     if(appScreen!=='game'||game.exitShowing)return;
     const W=canvas.width,H=canvas.height;
 
-    // ── top dialog bar (visible during gremlin interaction) ─────────────
+    // ── TOP BAR: guesses + hint prompt (riddle only) ─────
     if(game.inDialog&&dlg.state==='riddle'){
         const TH=32;
         ctx.fillStyle='rgba(0,0,0,0.88)';
@@ -1735,14 +1810,18 @@ function drawHUD(){
         const tmid=TH/2;
         const guessesLeft=Math.max(0,6-dlg.attempts);
 
-        // left: GUESSES label + number
+        // left: GUESSES remaining
         ctx.textAlign='left';
         ctx.fillStyle='#665544';
         ctx.fillText('GUESSES:',12,tmid);
         ctx.fillStyle=guessesLeft<=2?'#ff5533':guessesLeft<=4?'#ffaa44':'#aaddaa';
         ctx.fillText(String(guessesLeft),90,tmid);
 
-        // right: "type HINT for a clue" - mixed colour, left-to-right from computed start
+        // centre-left: [9] BUY shortcut
+        ctx.fillStyle='#554422';ctx.fillText('[9]',148,tmid);
+        ctx.fillStyle='#aa8833';ctx.fillText('BUY',172,tmid);
+
+        // right: "type HINT for a clue"
         const parts=[
             {t:'type ',    c:'#554433'},
             {t:'HINT',     c:'#ffcc55'},
@@ -1758,54 +1837,58 @@ function drawHUD(){
         });
     }
 
-    const HH=40, y=H-HH;
+    // ── BOTTOM BAR: background + borders ─────────────────
+    const HH=60, y=H-HH;
+    const row1H=28, row2H=HH-row1H;
 
-    // background + border
     ctx.fillStyle='rgba(0,0,0,0.90)';
     ctx.fillRect(0,y,W,HH);
     ctx.strokeStyle='#553300';ctx.lineWidth=2;
     ctx.beginPath();ctx.moveTo(0,y+1);ctx.lineTo(W,y+1);ctx.stroke();
+    ctx.strokeStyle='#2a1808';ctx.lineWidth=1;            // row divider
+    ctx.beginPath();ctx.moveTo(0,y+row1H);ctx.lineTo(W,y+row1H);ctx.stroke();
 
-    const mid=y+HH/2;
+    // ── BOTTOM ROW 1: torch fuel bar ──────────────────────
+    const mid1=y+row1H/2;
     ctx.textBaseline='middle';
-    ctx.font=`bold 14px 'Courier New', monospace`;
-
-    // Torch label
+    ctx.font=`bold 13px 'Courier New', monospace`;
     ctx.fillStyle='#aa7733';
     ctx.textAlign='left';
-    ctx.fillText('TORCH',14,mid);
-
-    // Torch bar
-    const labelW=76, pad=10;
-    // Reserve right side: three fixed-width columns, each 110px wide
-    const colW=110, cols=3, rightW=colW*cols+pad;
-    const barX=labelW+pad, barW=W-labelW-rightW-pad*2, barH=14;
-    const barY=mid-barH/2;
+    ctx.fillText('TORCH',10,mid1);
+    const labelW=66, pad=8;
+    const barX=labelW+pad, barW=W-labelW-pad*2-4, barH=11;
+    const barY=mid1-barH/2;
     const ratio=game.torch/TORCH_MAX;
     ctx.fillStyle='#1a1008';ctx.fillRect(barX,barY,barW,barH);
     ctx.strokeStyle='#6a4a22';ctx.lineWidth=1;ctx.strokeRect(barX,barY,barW,barH);
     ctx.fillStyle=ratio>0.5?'#ffaa00':ratio>0.25?'#ff6a00':'#ff2200';
     ctx.fillRect(barX+1,barY+1,Math.max(0,(barW-2)*ratio),barH-2);
 
-    // Right stats - each column: dim label left, unique-color value right
-    const stats=[
-        {label:'PASSES', val:String(game.passes).padStart(3,' '),          valColor:'#ff9944'},
-        {label:'DOORS',  val:String(game.doorsOpen).padStart(3,' '),       valColor:'#44dd88'},
-        {label:'DEPTH',  val:String(Math.floor(game.pos)).padStart(6,' '), valColor:'#55bbff'},
+    // ── BOTTOM ROW 2: five proportional slots across full width ──
+    // Each slot draws "LABEL  VALUE" as one unit, same color, to avoid misreads.
+    // Fractions are chosen so the widest item (DEPTH + 6 digits) never clips a neighbor.
+    const mid2=y+row1H+row2H/2;
+    ctx.font=`bold 12px 'Courier New', monospace`;
+    ctx.textBaseline='middle';
+
+    const slots=[
+        {text:`COINS  ${game.coins||0}`,                           color:'#ffdd44', x:0.02},
+        {text:`[0] NOTES  ${(game.notepad||[]).length}`,           color:'#bbaa44', x:0.20},
+        {text:`PASSES  ${game.passes}`,                            color:'#ff8844', x:0.42},
+        {text:`DOORS  ${game.doorsOpen}`,                          color:'#44ee88', x:0.62},
+        {text:`DEPTH  ${Math.floor(game.pos)}`,                    color:'#44bbff', x:0.78},
     ];
-    stats.forEach((s,i)=>{
-        const rx=W-pad-(cols-1-i)*colW-colW;
-        // dim separator before each column
-        ctx.strokeStyle='#3a2810'; ctx.lineWidth=1;
-        ctx.beginPath(); ctx.moveTo(rx-6,y+6); ctx.lineTo(rx-6,y+HH-6); ctx.stroke();
-        // label dimmed
+
+    // thin separators before the stat group and between each stat
+    [0.40, 0.60, 0.76].forEach(frac=>{
+        ctx.strokeStyle='#3a2810';ctx.lineWidth=1;
+        ctx.beginPath();ctx.moveTo(W*frac,y+row1H+4);ctx.lineTo(W*frac,y+HH-4);ctx.stroke();
+    });
+
+    slots.forEach(s=>{
         ctx.textAlign='left';
-        ctx.fillStyle='#665533';
-        ctx.fillText(s.label,rx+2,mid);
-        // value in its own distinct color
-        ctx.fillStyle=s.valColor;
-        ctx.textAlign='right';
-        ctx.fillText(s.val,rx+colW-6,mid);
+        ctx.fillStyle=s.color;
+        ctx.fillText(s.text, W*s.x, mid2);
     });
 }
 
@@ -1829,6 +1912,7 @@ function advanceSlip(){
         document.getElementById('slipMsg').textContent='[ paper crumbles in your hands ]';
         document.getElementById('slipAction').textContent='[ press enter to continue ]';
     } else {
+        addToNotepad(game.hallwayPapers[game.slipIdx].name);
         game.hallwayPapers[game.slipIdx].collected=true;
         game.slipShowing=false; game.slipIdx=-1;
         document.getElementById('slipOverlay').classList.remove('active');
@@ -1867,7 +1951,7 @@ function drawHallwaySlips(){
 
     // Proximity prompt
     if(game.slipNearbyIdx>=0&&!game.slipShowing){
-        const boxH=48,boxY=H-44-boxH;
+        const boxH=48,boxY=H-64-boxH;
         ctx.fillStyle='rgba(0,0,0,0.88)';ctx.fillRect(0,boxY,W,boxH);
         ctx.strokeStyle='#553300';ctx.lineWidth=1;
         ctx.beginPath();ctx.moveTo(0,boxY+1);ctx.lineTo(W,boxY+1);ctx.stroke();
@@ -1915,94 +1999,81 @@ function drawPaperInTunnel(){
 // ═══════════════════════════════════════════════════════
 //  WALL TORCH
 // ═══════════════════════════════════════════════════════
-function collectWallTorch(){
-    game.torch=TORCH_MAX;
-    game.wallTorchCollected=true;
-    game.wallTorchShowing=false;
-}
-
-function drawWallTorch(){
-    if(!game.wallTorchPos||game.wallTorchCollected||appScreen!=='game')return;
+function drawWallTorches(){
+    if(appScreen!=='game')return;
+    const _doorBlocked=game.inDialog&&!game.doorFading;
+    const activeDoorZ=(game.exitPos||game.doorFading)?Infinity:(game.doorPositions[game.doorIndex]??Infinity);
     const W=canvas.width,H=canvas.height;
-    const relDepth=game.wallTorchPos-game.pos;
-    if(relDepth<=0||relDepth>=TORCH_DEPTH)return;
-
-    const s=pScale(relDepth);
-    const r=pRect(relDepth);
-    const vis=Math.min(1,(TORCH_DEPTH-relDepth)/(TORCH_DEPTH*0.45));
-
-    // Mount point: left wall inner edge, ~40% down the tunnel face
-    const mountX=r.x;
-    const mountY=r.y+r.h*0.42;
-    const stickLen=Math.max(6,32*s);
-
-    // Stick angle: outward from left wall (right) and upward - like a wall sconce
-    const stickAngle=-Math.PI/5.5; // ≈ -33°
-    const tipX=mountX+Math.cos(stickAngle)*stickLen;
-    const tipY=mountY+Math.sin(stickAngle)*stickLen;
-
-    ctx.save();
-
-    // Ambient glow behind everything
-    const glowR=Math.max(6,20*s);
-    const gg=ctx.createRadialGradient(tipX,tipY,0,tipX,tipY,glowR*2.2);
-    gg.addColorStop(0,`rgba(255,170,40,${0.55*vis})`);
-    gg.addColorStop(1,'rgba(255,90,0,0)');
-    ctx.fillStyle=gg;
-    ctx.beginPath();ctx.arc(tipX,tipY,glowR*2.2,0,Math.PI*2);ctx.fill();
-
-    // Stick / handle
-    ctx.strokeStyle=`rgba(65,38,12,${vis})`;
-    ctx.lineWidth=Math.max(1,3.5*s);
-    ctx.lineCap='round';
-    ctx.beginPath();ctx.moveTo(mountX,mountY);ctx.lineTo(tipX,tipY);ctx.stroke();
-
-    // Small cup at tip
-    ctx.fillStyle=`rgba(55,30,8,${vis})`;
-    ctx.beginPath();ctx.arc(tipX,tipY,Math.max(2,3*s),0,Math.PI*2);ctx.fill();
-
-    // Rotating flame polygons
     const t=Date.now()/1000;
-    const fR=Math.max(3,10*s);
+    let anyShowing=false;
 
-    function flamePoly(radius,speed,offset,sides,r255,g255,b255,alpha){
-        const rot=t*speed+offset;
-        ctx.fillStyle=`rgba(${r255},${g255},${b255},${alpha*vis})`;
-        ctx.shadowColor=`rgba(${r255},${g255},0,${0.75*vis})`;
-        ctx.shadowBlur=fR*1.5;
-        ctx.beginPath();
-        for(let i=0;i<sides;i++){
-            const a=rot+(i/sides)*Math.PI*2;
-            // Alternate long spikes / short valleys = flame star shape
-            const rad=radius*(i%2===0?1.0:0.48+0.18*Math.sin(t*4.8+i*1.9));
-            const px=tipX+Math.cos(a)*rad;
-            const py=tipY+Math.sin(a)*rad;
-            if(i===0)ctx.moveTo(px,py);else ctx.lineTo(px,py);
+    game.wallTorches.forEach((wt,idx)=>{
+        if(wt.collected)return;
+        const relDepth=wt.z-game.pos;
+        if(relDepth<=0||relDepth>=TORCH_DEPTH)return;
+        if(wt.z>=activeDoorZ)return;
+        if(_doorBlocked&&relDepth>0)return;
+
+        const s=pScale(relDepth);
+        const r=pRect(relDepth);
+        const vis=Math.min(1,(TORCH_DEPTH-relDepth)/(TORCH_DEPTH*0.45));
+
+        const mountX=r.x;
+        const mountY=r.y+r.h*0.42;
+        const stickLen=Math.max(6,32*s);
+        const stickAngle=-Math.PI/5.5;
+        const tipX=mountX+Math.cos(stickAngle)*stickLen;
+        const tipY=mountY+Math.sin(stickAngle)*stickLen;
+
+        ctx.save();
+        const glowR=Math.max(6,20*s);
+        const gg=ctx.createRadialGradient(tipX,tipY,0,tipX,tipY,glowR*2.2);
+        gg.addColorStop(0,`rgba(255,170,40,${0.55*vis})`);
+        gg.addColorStop(1,'rgba(255,90,0,0)');
+        ctx.fillStyle=gg;
+        ctx.beginPath();ctx.arc(tipX,tipY,glowR*2.2,0,Math.PI*2);ctx.fill();
+
+        ctx.strokeStyle=`rgba(65,38,12,${vis})`;
+        ctx.lineWidth=Math.max(1,3.5*s);ctx.lineCap='round';
+        ctx.beginPath();ctx.moveTo(mountX,mountY);ctx.lineTo(tipX,tipY);ctx.stroke();
+        ctx.fillStyle=`rgba(55,30,8,${vis})`;
+        ctx.beginPath();ctx.arc(tipX,tipY,Math.max(2,3*s),0,Math.PI*2);ctx.fill();
+
+        const fR=Math.max(3,10*s);
+        const to=idx*1.3; // per-torch flicker offset
+        function fp(radius,speed,offset,sides,r255,g255,b255,alpha){
+            const rot=(t+to)*speed+offset;
+            ctx.fillStyle=`rgba(${r255},${g255},${b255},${alpha*vis})`;
+            ctx.shadowColor=`rgba(${r255},${g255},0,${0.75*vis})`;
+            ctx.shadowBlur=fR*1.5;
+            ctx.beginPath();
+            for(let i=0;i<sides;i++){
+                const a=rot+(i/sides)*Math.PI*2;
+                const rad=radius*(i%2===0?1.0:0.48+0.18*Math.sin((t+to)*4.8+i*1.9));
+                const px=tipX+Math.cos(a)*rad,py=tipY+Math.sin(a)*rad;
+                if(i===0)ctx.moveTo(px,py);else ctx.lineTo(px,py);
+            }
+            ctx.closePath();ctx.fill();ctx.shadowBlur=0;
         }
-        ctx.closePath();ctx.fill();
-        ctx.shadowBlur=0;
-    }
+        fp(fR*1.00, 1.8,0.0,8,255, 65,  0,0.82);
+        fp(fR*0.70,-2.5,1.1,7,255,150, 10,0.88);
+        fp(fR*0.42, 3.8,2.2,6,255,228, 70,0.93);
+        fp(fR*0.20,-6.0,3.5,5,255,252,200,1.00);
+        ctx.restore();
 
-    flamePoly(fR*1.00,  1.8, 0.0,  8, 255, 65,  0,  0.82); // deep orange outer
-    flamePoly(fR*0.70, -2.5, 1.1,  7, 255,150, 10,  0.88); // orange-yellow mid
-    flamePoly(fR*0.42,  3.8, 2.2,  6, 255,228, 70,  0.93); // bright yellow inner
-    flamePoly(fR*0.20, -6.0, 3.5,  5, 255,252,200,  1.00); // white-hot core
+        if(wt.showing) anyShowing=true;
+    });
 
-    ctx.restore();
-
-    // Prompt drawn on canvas when close
-    if(game.wallTorchShowing){
-        const boxH=56, boxY=H-44-boxH;
+    if(anyShowing){
+        const boxH=56, boxY=H-64-boxH;
         ctx.fillStyle='rgba(0,0,0,0.90)';ctx.fillRect(0,boxY,W,boxH);
         ctx.strokeStyle='#774400';ctx.lineWidth=1;
         ctx.beginPath();ctx.moveTo(0,boxY+1);ctx.lineTo(W,boxY+1);ctx.stroke();
         ctx.textAlign='center';ctx.textBaseline='middle';
-        ctx.fillStyle='#ffcc55';
-        ctx.font=`bold 13px 'Courier New',monospace`;
-        ctx.fillText('TORCH FOUND.  WHY IS THIS HERE?',W/2,boxY+boxH*0.33);
-        ctx.fillStyle='#886633';
-        ctx.font=`11px 'Courier New',monospace`;
-        ctx.fillText('[ PRESS ENTER TO REPLACE YOUR TORCH ]',W/2,boxY+boxH*0.70);
+        ctx.fillStyle='#ffcc55';ctx.font=`bold 13px 'Courier New',monospace`;
+        ctx.fillText('A TORCH ON THE WALL.',W/2,boxY+boxH*0.33);
+        ctx.fillStyle='#886633';ctx.font=`11px 'Courier New',monospace`;
+        ctx.fillText('[ PRESS ENTER TO TAKE IT ]',W/2,boxY+boxH*0.70);
     }
 }
 
@@ -2386,40 +2457,107 @@ function drawExitPortal(){
 // ═══════════════════════════════════════════════════════
 function drawSidePassage(){
     if(appScreen!=='game'||game.exitShowing||!game.sidePassagePos)return;
+    if(game.inDialog&&!game.doorFading)return;
     const W=canvas.width,H=canvas.height;
     const relDepth=game.sidePassagePos-game.pos;
     if(relDepth<=0||relDepth>TORCH_DEPTH*1.1)return;
-    const r=pRect(relDepth);
+    const activeDoorZ=(game.exitPos||game.doorFading)?Infinity:(game.doorPositions[game.doorIndex]??Infinity);
+    if(game.sidePassagePos>=activeDoorZ)return;
+    const r=pRect(Math.max(1,relDepth-3)); // nudge arch in front of wall face to avoid z-fighting
     const tp=(game.torch/TORCH_MAX)*game.flicker;
-    const pL=wallL(relDepth,36,tp);
-    // Hole anchored to the right inner wall edge
+    const pL=wallL(relDepth,36,tp); // lighting uses true depth
+    const pal=game.tunnelPalette||genTunnelPalette();
+
+    // Anchor: right inner wall edge, ~60% down the tunnel face
     const hx=r.x+r.w;
-    const hy=r.y+r.h*0.62;
-    const hw=r.h*0.13;
-    const hh=r.h*0.30;
-    ctx.save();
-    // Rough stone surround
-    ctx.fillStyle=`hsl(25,16%,${Math.min(pL*1.3,22).toFixed(1)}%)`;
-    ctx.beginPath();ctx.ellipse(hx,hy,hw*1.55,hh*1.35,0,0,Math.PI*2);ctx.fill();
-    // Jagged inner edge (slightly smaller rough ellipse)
-    ctx.fillStyle=`hsl(22,10%,${Math.min(pL*0.7,10).toFixed(1)}%)`;
-    ctx.beginPath();ctx.ellipse(hx,hy,hw*1.18,hh*1.08,0.08,0,Math.PI*2);ctx.fill();
-    // Dark void
-    ctx.fillStyle='#010100';
-    ctx.beginPath();ctx.ellipse(hx,hy,hw,hh,0,0,Math.PI*2);ctx.fill();
-    // Faint amber glow from inside (torch not yet taken)
+    const hy=r.y+r.h*0.60;
+
+    // Wall "into" direction — from inner edge toward the outer-right canvas edge,
+    // following the perspective of the right wall face.
+    const v_frac=(hy-r.y)/r.h;
+    const wallFarY=v_frac*H;
+    const wallDX=W-hx;
+    const wallDY=wallFarY-hy;
+    const wallLen=Math.sqrt(wallDX*wallDX+wallDY*wallDY);
+    const wux=wallDX/wallLen;  // unit vector into wall, x
+    const wuy=wallDY/wallLen;  // unit vector into wall, y
+
+    // Arch dimensions — depth is capped so it never exceeds the visible wall face
+    const archH=r.h*0.32;
+    const archDepth=Math.min(r.h*0.08, wallLen*0.22);
+
+    // Ambient glow from the torch inside (drawn before arch, behind it)
     if(!game.sidePassageTorchTaken){
         const vis=Math.min(1,(TORCH_DEPTH-relDepth)/(TORCH_DEPTH*0.65));
-        const gl=ctx.createRadialGradient(hx,hy,0,hx,hy,hw*2.2);
-        gl.addColorStop(0,`rgba(210,115,18,${0.45*vis})`);
+        const glowR=archH*0.95;
+        const gl=ctx.createRadialGradient(hx,hy,0,hx,hy,glowR);
+        gl.addColorStop(0,`rgba(210,115,18,${0.50*vis})`);
+        gl.addColorStop(0.5,`rgba(160,75,8,${0.18*vis})`);
         gl.addColorStop(1,'rgba(0,0,0,0)');
         ctx.fillStyle=gl;
-        ctx.beginPath();ctx.arc(hx,hy,hw*2.2,0,Math.PI*2);ctx.fill();
+        ctx.beginPath();ctx.arc(hx,hy,glowR,0,Math.PI*2);ctx.fill();
     }
+
+    // Draw the arch using a perspective transform so it lies flat on the right wall.
+    //
+    // setTransform maps local (lx, ly) → screen:
+    //   screen_x = (wux*archDepth)*lx + 0*ly + hx
+    //   screen_y = (wuy*archDepth)*lx + (-archH)*ly + (hy + archH*0.5)
+    //
+    // So in local space:
+    //   lx  ∈ [0,1]  =  0 (inner wall edge) → 1 (archDepth into wall)
+    //   ly  ∈ [0,1]  =  0 (arch bottom)     → 1 (arch top)   [y-axis flipped]
+    //
+    // Arch profile: rectangle [0,1]×[0,0.5] topped by a semicircle radius 0.5 at (0.5,0.5).
+    // Because the y-axis is flipped by the negative d-coefficient, arc(π→0, CW) renders
+    // as the top half in screen space.
+
+    ctx.save();
+    ctx.setTransform(
+        wux*archDepth, wuy*archDepth,  // a, b  — local x-axis into wall
+        0,             -archH,         // c, d  — local y-axis upward (flipped)
+        hx,            hy+archH*0.5   // e, f  — origin at arch bottom, inner wall edge
+    );
+
+    const stoneL =Math.min(pL*1.3,24);
+    const stoneL2=Math.min(pL*0.8,15);
+    const sx=0.18; // surround extension in local units
+
+    // Stone frame (surround)
+    ctx.fillStyle=`hsl(${pal.wallH+2},${Math.max(4,pal.wallS*0.36).toFixed(0)}%,${stoneL.toFixed(1)}%)`;
+    ctx.beginPath();
+    ctx.moveTo(-sx,-0.10);
+    ctx.lineTo(-sx,0.5);
+    ctx.arc(0.5,0.5,0.5+sx,Math.PI,0,false);
+    ctx.lineTo(1+sx,-0.10);
+    ctx.closePath();
+    ctx.fill();
+
+    // Inner shadow ring
+    ctx.fillStyle=`hsl(${pal.wallH},${Math.max(3,pal.wallS*0.24).toFixed(0)}%,${stoneL2.toFixed(1)}%)`;
+    ctx.beginPath();
+    ctx.moveTo(-sx*0.45,-0.04);
+    ctx.lineTo(-sx*0.45,0.5);
+    ctx.arc(0.5,0.5,0.5+sx*0.45,Math.PI,0,false);
+    ctx.lineTo(1+sx*0.45,-0.04);
+    ctx.closePath();
+    ctx.fill();
+
+    // Dark void — the passage opening
+    ctx.fillStyle='#010100';
+    ctx.beginPath();
+    ctx.moveTo(0,0);
+    ctx.lineTo(0,0.5);
+    ctx.arc(0.5,0.5,0.5,Math.PI,0,false);
+    ctx.lineTo(1,0);
+    ctx.closePath();
+    ctx.fill();
+
     ctx.restore();
-    // Proximity prompt
+
+    // Proximity prompt (screen space, transform already restored)
     if(game.sidePassageNear&&!game.sidePassageVisited){
-        const boxH=56,boxY=H-44-boxH;
+        const boxH=56,boxY=H-64-boxH;
         ctx.fillStyle='rgba(0,0,0,0.90)';ctx.fillRect(0,boxY,W,boxH);
         ctx.strokeStyle='#553300';ctx.lineWidth=1;
         ctx.beginPath();ctx.moveTo(0,boxY+1);ctx.lineTo(W,boxY+1);ctx.stroke();
@@ -2511,22 +2649,20 @@ function drawPassageRoom(){
         fp(ts*0.20,-6.0,3.5,5,255,252,200,1.00);
     }
 
-    // Etched "VOLCANISM" – slanted scrawling handwriting
+    // Etched process name – slanted scrawling handwriting
+    const etched=(game.sidePassageProcessName||'volcanism').toUpperCase();
     const fontSize=Math.max(12,backH*0.092);
     const etx=bx+backW*0.30,ety=by+backH*0.60;
     ctx.save();
     ctx.translate(etx,ety);ctx.rotate(-0.14);
     ctx.font=`italic bold ${fontSize}px 'Palatino Linotype','Book Antiqua',Georgia,serif`;
     ctx.textAlign='left';ctx.textBaseline='middle';
-    // Carved depth shadow
-    ctx.fillStyle=`hsl(${pal.wallH},6%,6%)`;ctx.fillText('VOLCANISM',3,4);
-    // Cut-stone surface (lighter, suggests depth of chisel)
-    ctx.fillStyle=`hsl(${pal.wallH+4},14%,30%)`;ctx.fillText('VOLCANISM',0,0);
-    // Hairline highlight on top edge of cut
-    ctx.strokeStyle=`hsl(${pal.wallH+6},18%,38%)`;ctx.lineWidth=0.8;ctx.strokeText('VOLCANISM',0,0);
-    // Small scratch marks below the word (like someone traced it multiple times)
+    ctx.fillStyle=`hsl(${pal.wallH},6%,6%)`;ctx.fillText(etched,3,4);
+    ctx.fillStyle=`hsl(${pal.wallH+4},14%,30%)`;ctx.fillText(etched,0,0);
+    ctx.strokeStyle=`hsl(${pal.wallH+6},18%,38%)`;ctx.lineWidth=0.8;ctx.strokeText(etched,0,0);
     ctx.strokeStyle=`hsl(${pal.wallH},10%,22%)`;ctx.lineWidth=0.6;
-    ctx.beginPath();ctx.moveTo(0,fontSize*0.78);ctx.lineTo(fontSize*4.5,fontSize*0.72);ctx.stroke();
+    const scratchW=ctx.measureText(etched).width;
+    ctx.beginPath();ctx.moveTo(0,fontSize*0.78);ctx.lineTo(scratchW*0.95,fontSize*0.72);ctx.stroke();
     ctx.restore();
 
     // Bottom prompt bar
@@ -2549,7 +2685,189 @@ function drawPassageRoom(){
     }
 }
 
-function loop(){update();drawTunnel();drawDoors();drawSidePassage();drawPassageRoom();drawWallTorch();drawHallwaySlips();drawExitPortal();drawPaperInTunnel();drawFade();drawHUD();requestAnimationFrame(loop);}
+// ═══════════════════════════════════════════════════════
+//  NOTEPAD / INVENTORY
+// ═══════════════════════════════════════════════════════
+function addToNotepad(name){
+    if(name&&!game.notepad.includes(name)) game.notepad.push(name);
+}
+
+function drawNotepadOverlay(){
+    if(!game.notepadOpen||appScreen!=='game')return;
+    const W=canvas.width,H=canvas.height;
+    const pw=Math.min(400,W*0.72),ph=Math.min(340,H*0.65);
+    const px=(W-pw)/2,py=(H-ph)/2;
+    ctx.save();
+    ctx.fillStyle='rgba(0,0,0,0.88)';ctx.fillRect(0,0,W,H);
+    ctx.fillStyle='#1a1005';ctx.fillRect(px,py,pw,ph);
+    ctx.strokeStyle='#886633';ctx.lineWidth=2;ctx.strokeRect(px,py,pw,ph);
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillStyle='#ddaa33';ctx.font=`bold 14px 'Courier New',monospace`;
+    ctx.fillText('FIELD NOTES',px+pw/2,py+20);
+    ctx.strokeStyle='#554422';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(px+12,py+34);ctx.lineTo(px+pw-12,py+34);ctx.stroke();
+    const notes=game.notepad||[];
+    const descs=game.notepadDescs||{};
+    if(notes.length===0){
+        ctx.fillStyle='#554433';ctx.font=`italic 12px 'Courier New',monospace`;
+        ctx.fillText('nothing discovered yet.',px+pw/2,py+ph/2);
+    } else {
+        ctx.textAlign='left';ctx.textBaseline='top';
+        const panelBottom=py+ph-30;
+        let ey=py+42, overflow=0;
+        notes.forEach((name,i)=>{
+            const desc=descs[name]||'';
+            const nameH=20, descH=desc?18:0, entryH=nameH+descH+4;
+            if(ey+entryH>panelBottom){ overflow++; return; }
+            // name line
+            ctx.font=`bold 13px 'Courier New',monospace`;
+            ctx.fillStyle=i%2===0?'#ccaa44':'#aa8833';
+            ctx.fillText(`${i+1}. ${name}`,px+18,ey);
+            // description line (if purchased)
+            if(desc){
+                ctx.font=`italic 11px 'Courier New',monospace`;
+                ctx.fillStyle='#887744';
+                // truncate to panel width
+                let txt=desc;
+                const maxW=pw-36;
+                while(ctx.measureText(txt).width>maxW&&txt.length>8) txt=txt.slice(0,-4)+'...';
+                ctx.fillText(txt,px+26,ey+nameH);
+            }
+            ey+=entryH;
+        });
+        if(overflow>0){
+            ctx.font=`italic 11px 'Courier New',monospace`;
+            ctx.fillStyle='#554433';ctx.textAlign='center';
+            ctx.fillText(`...and ${overflow} more`,px+pw/2,ey+2);
+        }
+    }
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillStyle='#554422';ctx.font=`11px 'Courier New',monospace`;
+    ctx.fillText('[ 0 to close ]',px+pw/2,py+ph-14);
+    ctx.restore();
+}
+
+// ═══════════════════════════════════════════════════════
+//  SOFT RESET
+// ═══════════════════════════════════════════════════════
+function softReset(){
+    game.softResetting=true;
+    const saved={
+        notepad:game.notepad.slice(), notepadDescs:Object.assign({},game.notepadDescs), coins:game.coins,
+        doorsOpen:game.doorsOpen, doorIndex:game.doorIndex,
+        doorPositions:game.doorPositions.slice(), doorEyeHues:game.doorEyeHues.slice(),
+        paperCollected:game.paperCollected, hallwayPapers:game.hallwayPapers,
+        sidePassageTorchTaken:game.sidePassageTorchTaken, sidePassageVisited:game.sidePassageVisited,
+        sidePassagePos:game.sidePassagePos, sidePassageProcessName:game.sidePassageProcessName,
+        wallTorches:game.wallTorches, floorCoins:game.floorCoins,
+        tunnelPalette:game.tunnelPalette, exitPos:game.exitPos,
+    };
+    convoWrap.classList.remove('show');
+    showPlayerInput(false);
+    game.fadeMsg='YOUR TORCH HAS GONE OUT\nYou awaken at the tunnel entrance...';
+    game.fadeDir=1; game.fadeAlpha=0;
+    game.fadeCallback=()=>{
+        Object.assign(game,saved,{
+            pos:0, torch:TORCH_MAX, passes:MAX_PASSES,
+            inDialog:false, correctPending:false,
+            slipShowing:false, slipIdx:-1, slipNearbyIdx:-1, slipPhase:'',
+            sidePassageNear:false, sidePassageActive:false,
+            notepadOpen:false, purchaseDialogOpen:false, softResetting:false,
+        });
+        clearConvo();
+    };
+}
+
+// ═══════════════════════════════════════════════════════
+//  PURCHASE DIALOG
+// ═══════════════════════════════════════════════════════
+function openPurchaseDialog(){
+    if(game.purchaseDialogOpen) return;
+    game.purchaseDialogOpen=true;
+    game.inDialog=true;
+    dlg.state='buy_list';
+    clearConvo();
+    convoWrap.classList.add('show');
+    document.getElementById('playerLabel').textContent=`${game.playerName}'s choice:`;
+    setPlayerInput('');
+    if(game.coins<3){
+        qGremlin(`you only have ${game.coins} coin${game.coins===1?'':'s'}.  come back with 3.`,'');
+        setTimeout(()=>closePurchaseDialog(),2200);
+        return;
+    }
+    if(!game.notepad||game.notepad.length===0){
+        qGremlin(`you haven't discovered any processes yet.  go explore!`,'');
+        setTimeout(()=>closePurchaseDialog(),2200);
+        return;
+    }
+    qGremlin(`knowledge costs 3 coins.  you have ${game.coins}.  which process shall I explain?`,'');
+    game.notepad.forEach((name,i)=>{
+        qGremlin(`${i+1}. ${name}`,'cl-hint');
+    });
+    qGremlin(`press a number key to choose, or type CANCEL.`,'cl-hud');
+}
+
+function closePurchaseDialog(){
+    game.purchaseDialogOpen=false;
+    game.inDialog=false;
+    dlg.state='riddle';
+    convoWrap.classList.remove('show');
+    showPlayerInput(false);
+    clearConvo();
+}
+
+// ═══════════════════════════════════════════════════════
+//  FLOOR COINS
+// ═══════════════════════════════════════════════════════
+function drawFloorCoins(){
+    if(appScreen!=='game'||game.exitShowing)return;
+    const W=canvas.width,H=canvas.height;
+    const _doorBlocked=game.inDialog&&!game.doorFading;
+    const activeDoorZ=(game.exitPos||game.doorFading)?Infinity:(game.doorPositions[game.doorIndex]??Infinity);
+    let nearCoin=false;
+    (game.floorCoins||[]).forEach(coin=>{
+        if(coin.collected)return;
+        const depth=coin.z-game.pos;
+        if(depth<=0||depth>=FOCAL*2)return;
+        if(coin.z>=activeDoorZ)return;
+        if(_doorBlocked&&depth>0)return;
+        const s=pScale(depth);
+        const vis=Math.min(1,(FOCAL*2-depth)/(FOCAL*2*0.55));
+        const r=pRect(depth);
+        const floorY=r.y+r.h;
+        const cx=r.x+r.w*coin.fx;
+        const cr=Math.max(2,8*s);
+        ctx.save();
+        ctx.globalAlpha=vis;
+        const gg=ctx.createRadialGradient(cx,floorY-cr,0,cx,floorY-cr,cr*3);
+        gg.addColorStop(0,'rgba(255,230,50,0.55)');
+        gg.addColorStop(1,'rgba(255,150,0,0)');
+        ctx.fillStyle=gg;
+        ctx.beginPath();ctx.arc(cx,floorY-cr,cr*3,0,Math.PI*2);ctx.fill();
+        ctx.shadowColor='rgba(255,200,0,0.8)';ctx.shadowBlur=cr*2;
+        ctx.fillStyle='#ddaa00';
+        ctx.beginPath();ctx.arc(cx,floorY-cr,cr,0,Math.PI*2);ctx.fill();
+        ctx.strokeStyle='#886600';ctx.lineWidth=Math.max(0.5,s*1.5);ctx.stroke();
+        ctx.shadowBlur=0;
+        ctx.fillStyle='rgba(255,255,200,0.55)';
+        ctx.beginPath();ctx.arc(cx-cr*0.28,floorY-cr-cr*0.22,cr*0.32,0,Math.PI*2);ctx.fill();
+        ctx.restore();
+        if(depth<120) nearCoin=true;
+    });
+    if(nearCoin&&!game.inDialog&&!game.slipShowing){
+        const boxH=40,boxY=H-64-boxH;
+        ctx.fillStyle='rgba(0,0,0,0.88)';ctx.fillRect(0,boxY,W,boxH);
+        ctx.strokeStyle='#553300';ctx.lineWidth=1;
+        ctx.beginPath();ctx.moveTo(0,boxY+1);ctx.lineTo(W,boxY+1);ctx.stroke();
+        ctx.textAlign='center';ctx.textBaseline='middle';
+        ctx.fillStyle='#ddaa33';ctx.font=`bold 13px 'Courier New',monospace`;
+        ctx.fillText('COIN',W/2,boxY+boxH*0.35);
+        ctx.fillStyle='#664422';ctx.font=`11px 'Courier New',monospace`;
+        ctx.fillText('[ PRESS ENTER TO COLLECT ]',W/2,boxY+boxH*0.72);
+    }
+}
+
+function loop(){update();drawTunnel();drawDoors();drawSidePassage();drawPassageRoom();drawWallTorches();drawHallwaySlips();drawFloorCoins();drawExitPortal();drawPaperInTunnel();drawFade();drawNotepadOverlay();drawHUD();requestAnimationFrame(loop);}
 
 // ═══════════════════════════════════════════════════════
 //  BLOCK CURSORS
@@ -2603,6 +2921,28 @@ window.addEventListener('keydown',e=>{
             }
             return;
         }
+        // Close notepad on Escape
+        if(e.code==='Escape'&&game.notepadOpen){
+            e.preventDefault(); game.notepadOpen=false; return;
+        }
+        // Close purchase dialog on Escape
+        if(e.code==='Escape'&&game.purchaseDialogOpen){
+            e.preventDefault(); closePurchaseDialog(); return;
+        }
+        // ── Number keys 0-9: HUD/inventory only, never enter the answer field ──
+        if(e.key>='0'&&e.key<='9'&&!e.ctrlKey&&!e.altKey){
+            e.preventDefault();
+            if(e.key==='0'){
+                // toggle notepad — works even during gremlin dialog
+                game.notepadOpen=!game.notepadOpen;
+            } else if(game.purchaseDialogOpen&&dlg.state==='buy_list'){
+                // direct buy selection by key press, no input field needed
+                handleInput(e.key);
+            } else if(e.key==='9'&&!game.inDialog&&!game.slipShowing&&!game.sidePassageActive&&!game.softResetting){
+                openPurchaseDialog();
+            }
+            return;
+        }
     }
 
     // DEBUG: Shift+2 → jump to final door
@@ -2650,12 +2990,20 @@ window.addEventListener('keydown',e=>{
     if(appScreen==='game'&&game.sidePassageActive&&e.code==='Enter'){
         e.preventDefault();
         if(!game.sidePassageTorchTaken){ game.sidePassageTorchTaken=true; game.torch=TORCH_MAX; }
-        else { game.sidePassageActive=false; game.sidePassageVisited=true; }
+        else { addToNotepad(game.sidePassageProcessName); game.sidePassageActive=false; game.sidePassageVisited=true; }
         return;
     }
     // Wall torch pickup
-    if(appScreen==='game'&&game.wallTorchShowing&&!game.inDialog&&e.code==='Enter'){
-        e.preventDefault(); collectWallTorch(); return;
+    {
+        const nearTorch=game.wallTorches&&game.wallTorches.find(wt=>wt.showing&&!wt.collected);
+        if(appScreen==='game'&&nearTorch&&!game.inDialog&&e.code==='Enter'){
+            e.preventDefault(); nearTorch.collected=true; nearTorch.showing=false; game.torch=TORCH_MAX; return;
+        }
+    }
+    // Floor coin pickup
+    if(appScreen==='game'&&!game.inDialog&&!game.slipShowing&&!game.sidePassageActive&&e.code==='Enter'){
+        const nearCoin=game.floorCoins&&game.floorCoins.find(c=>!c.collected&&(c.z-game.pos)>0&&(c.z-game.pos)<120);
+        if(nearCoin){ e.preventDefault(); nearCoin.collected=true; game.coins=(game.coins||0)+1; return; }
     }
 
     // game
@@ -2670,7 +3018,7 @@ window.addEventListener('keydown',e=>{
         }
         if (game.gameOver||game.exitDone){location.reload();return;}
         if (game.exitShowing) return;
-        if (!game.inDialog&&!game.sidePassageActive&&game.fadeDir===0&&game.fadeAlpha===0) game.pos+=STEP;
+        if (!game.inDialog&&!game.sidePassageActive&&game.fadeDir===0&&game.fadeAlpha===0&&!game.notepadOpen) game.pos+=STEP;
     }
     if ((e.code==='Enter'||(e.code==='Space'&&answerFocused))&&game.inDialog&&answerFocused&&!isGremlinTyping) {
         e.preventDefault();
