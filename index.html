@@ -2077,6 +2077,41 @@ function drawWallTorches(){
         ctx.fillStyle='#886633';ctx.font=`11px 'Courier New',monospace`;
         ctx.fillText('[ PRESS ENTER TO TAKE IT ]',W/2,boxY+boxH*0.70);
     }
+
+    // Ambient glow bleed: torches hidden behind the locked door cast warm light through it
+    if(!game.exitPos&&!game.doorFading){
+        const nextDoorZ=game.doorPositions[game.doorIndex];
+        if(nextDoorZ!==undefined){
+            const doorDepth=nextDoorZ-game.pos;
+            if(doorDepth>0&&doorDepth<TORCH_DEPTH){
+                const doorR=pRect(doorDepth);
+                const tp=(game.torch/TORCH_MAX)*game.flicker;
+                game.wallTorches.forEach((wt,idx)=>{
+                    if(wt.collected)return;
+                    const torchDepth=wt.z-game.pos;
+                    if(torchDepth<=doorDepth)return;          // not behind door
+                    const distBeyond=torchDepth-doorDepth;
+                    if(distBeyond>500)return;                 // too far to bleed through
+                    const vis=Math.min(1,(TORCH_DEPTH-torchDepth)/(TORCH_DEPTH*0.6));
+                    const falloff=Math.max(0,1-distBeyond/450);
+                    const to=idx*1.3;
+                    const flick=0.82+0.18*Math.sin(t*2.2+to)*Math.sin(t*3.1+to*0.7);
+                    const alpha=vis*falloff*tp*flick*0.45;
+                    if(alpha<0.01)return;
+                    // Project glow onto the left wall at the door face (torch is on the left wall)
+                    const gx=doorR.x+doorR.w*0.05;
+                    const gy=doorR.y+doorR.h*0.42;
+                    const gr=doorR.h*0.42;
+                    const gg=ctx.createRadialGradient(gx,gy,0,gx,gy,gr*2.5);
+                    gg.addColorStop(0,`rgba(255,160,40,${alpha})`);
+                    gg.addColorStop(0.4,`rgba(200,80,15,${(alpha*0.35).toFixed(3)})`);
+                    gg.addColorStop(1,'rgba(0,0,0,0)');
+                    ctx.fillStyle=gg;
+                    ctx.beginPath();ctx.arc(gx,gy,gr*2.5,0,Math.PI*2);ctx.fill();
+                });
+            }
+        }
+    }
 }
 
 // ═══════════════════════════════════════════════════════
@@ -2466,104 +2501,86 @@ function drawExitPortal(){
 function drawSidePassage(){
     if(appScreen!=='game'||game.exitShowing||!game.sidePassagePos)return;
     if(game.inDialog&&!game.doorFading)return;
-    const W=canvas.width,H=canvas.height;
+    const W=canvas.width,H=canvas.height,cx=W/2,cy=H/2;
     const relDepth=game.sidePassagePos-game.pos;
     if(relDepth<=0||relDepth>TORCH_DEPTH*1.1)return;
     const activeDoorZ=(game.exitPos||game.doorFading)?Infinity:(game.doorPositions[game.doorIndex]??Infinity);
     if(game.sidePassagePos>=activeDoorZ)return;
-    const r=pRect(relDepth);
+
     const tp=(game.torch/TORCH_MAX)*game.flicker;
-    const pL=wallL(relDepth,36,tp); // lighting uses true depth
+    const pL=wallL(relDepth,36,tp);
     const pal=game.tunnelPalette||genTunnelPalette();
 
-    // Anchor: right inner wall edge, ~60% down the tunnel face
-    const hx=r.x+r.w;
-    const hy=r.y+r.h*0.60;
+    // Arch world-space dimensions (canvas pixels, measured at depth 0)
+    const archH_w = H * 0.32;          // opening height (rect part + arch cap)
+    const archZ_w = H * 0.40;          // z-span of opening along the tunnel
 
-    // Wall "into" direction - from inner edge toward the outer-right canvas edge,
-    // following the perspective of the right wall face.
-    const v_frac=(hy-r.y)/r.h;
-    const wallFarY=v_frac*H;
-    const wallDX=W-hx;
-    const wallDY=wallFarY-hy;
-    const wallLen=Math.sqrt(wallDX*wallDX+wallDY*wallDY);
-    const wux=wallDX/wallLen;  // unit vector into wall, x
-    const wuy=wallDY/wallLen;  // unit vector into wall, y
+    // Perspective scales at near edge, far edge, and midpoint of the arch span
+    const sN = pScale(relDepth);
+    const sF = pScale(relDepth + archZ_w);
+    const sM = pScale(relDepth + archZ_w * 0.5);
 
-    // Arch dimensions - width matches height so the opening looks like a passage, not a slit
-    const archH=r.h*0.32;
-    const archDepth=Math.min(archH*0.85, wallLen*0.68);
+    // Project each world point onto screen using the right-wall inner-edge formula:
+    //   x = cx*(1+s),   y = cy + (world_y - cy)*s
+    // Floor is at world_y = H  →  screen_y = cy + cy*s = cy*(1+s)
+    const nbX = cx*(1+sN),  nbY = cy + cy*sN;            // near bottom (floor)
+    const fbX = cx*(1+sF),  fbY = cy + cy*sF;            // far  bottom
+    const ntX = nbX,  ntY = cy + (cy - archH_w)*sN;      // near top of opening
+    const ftX = fbX,  ftY = cy + (cy - archH_w)*sF;      // far  top of opening
+    // Arch apex sits at half the z-span and archZ_w/2 above the rect-top
+    const apX = cx*(1+sM),  apY = cy + (cy - archH_w - archZ_w*0.5)*sM;
+    // Quadratic Bézier control point so the curve passes through the apex at t=0.5:
+    //   B(0.5) = 0.25*P0 + 0.5*CP + 0.25*P2 = apex  →  CP = 2*apex - 0.5*P0 - 0.5*P2
+    const cpX = 2*apX - 0.5*ntX - 0.5*ftX;
+    const cpY = 2*apY - 0.5*ntY - 0.5*ftY;
 
-    // Ambient glow from the torch inside (drawn before arch, behind it)
+    // Ambient glow from the torch inside
     if(!game.sidePassageTorchTaken){
         const vis=Math.min(1,(TORCH_DEPTH-relDepth)/(TORCH_DEPTH*0.65));
-        const glowR=archH*0.95;
-        const gl=ctx.createRadialGradient(hx,hy,0,hx,hy,glowR);
+        const gcX=(ntX+ftX)*0.5, gcY=(apY+nbY)*0.5;
+        const gR=(nbY-apY)*0.62;
+        const gl=ctx.createRadialGradient(gcX,gcY,0,gcX,gcY,gR);
         gl.addColorStop(0,`rgba(210,115,18,${0.50*vis})`);
         gl.addColorStop(0.5,`rgba(160,75,8,${0.18*vis})`);
         gl.addColorStop(1,'rgba(0,0,0,0)');
         ctx.fillStyle=gl;
-        ctx.beginPath();ctx.arc(hx,hy,glowR,0,Math.PI*2);ctx.fill();
+        ctx.beginPath();ctx.arc(gcX,gcY,gR,0,Math.PI*2);ctx.fill();
     }
-
-    // Draw the arch using a perspective transform so it lies flat on the right wall.
-    //
-    // setTransform maps local (lx, ly) → screen:
-    //   screen_x = (wux*archDepth)*lx + 0*ly + hx
-    //   screen_y = (wuy*archDepth)*lx + (-archH)*ly + (hy + archH*0.5)
-    //
-    // So in local space:
-    //   lx  ∈ [0,1]  =  0 (inner wall edge) → 1 (archDepth into wall)
-    //   ly  ∈ [0,1]  =  0 (arch bottom)     → 1 (arch top)   [y-axis flipped]
-    //
-    // Arch profile: rectangle [0,1]×[0,0.5] topped by a semicircle radius 0.5 at (0.5,0.5).
-    // Because the y-axis is flipped by the negative d-coefficient, arc(π→0, CW) renders
-    // as the top half in screen space.
-
-    ctx.save();
-    ctx.setTransform(
-        wux*archDepth, wuy*archDepth,  // a, b  - local x-axis into wall
-        0,             -archH,         // c, d  - local y-axis upward (flipped)
-        hx,            hy+archH*0.5   // e, f  - origin at arch bottom, inner wall edge
-    );
 
     const stoneL =Math.min(pL*1.3,24);
     const stoneL2=Math.min(pL*0.8,15);
-    const sx=0.18; // surround extension in local units
+    const frame  =Math.max(3,(nbX-fbX)*0.22);
 
-    // Stone frame (surround)
-    ctx.fillStyle=`hsl(${pal.wallH+2},${Math.max(4,pal.wallS*0.36).toFixed(0)}%,${stoneL.toFixed(1)}%)`;
+    ctx.save();
+    // Clip to the right wall face triangle so the stone frame stays on the wall surface
+    ctx.beginPath();ctx.moveTo(W,0);ctx.lineTo(W,H);ctx.lineTo(cx,cy);ctx.closePath();ctx.clip();
+
+    // Stone surround — outer ring (stroke only the three visible sides, not the floor)
+    ctx.lineWidth=frame*2; ctx.lineJoin='round';
+    ctx.strokeStyle=`hsl(${pal.wallH+2},${Math.max(4,pal.wallS*0.36).toFixed(0)}%,${stoneL.toFixed(1)}%)`;
     ctx.beginPath();
-    ctx.moveTo(-sx,-0.10);
-    ctx.lineTo(-sx,0.5);
-    ctx.arc(0.5,0.5,0.5+sx,Math.PI,0,false);
-    ctx.lineTo(1+sx,-0.10);
-    ctx.closePath();
-    ctx.fill();
+    ctx.moveTo(nbX,nbY); ctx.lineTo(ntX,ntY);
+    ctx.quadraticCurveTo(cpX,cpY,ftX,ftY); ctx.lineTo(fbX,fbY);
+    ctx.stroke();
 
-    // Inner shadow ring
-    ctx.fillStyle=`hsl(${pal.wallH},${Math.max(3,pal.wallS*0.24).toFixed(0)}%,${stoneL2.toFixed(1)}%)`;
+    // Stone surround — inner shadow
+    ctx.lineWidth=frame*0.9;
+    ctx.strokeStyle=`hsl(${pal.wallH},${Math.max(3,pal.wallS*0.24).toFixed(0)}%,${stoneL2.toFixed(1)}%)`;
     ctx.beginPath();
-    ctx.moveTo(-sx*0.45,-0.04);
-    ctx.lineTo(-sx*0.45,0.5);
-    ctx.arc(0.5,0.5,0.5+sx*0.45,Math.PI,0,false);
-    ctx.lineTo(1+sx*0.45,-0.04);
-    ctx.closePath();
-    ctx.fill();
+    ctx.moveTo(nbX,nbY); ctx.lineTo(ntX,ntY);
+    ctx.quadraticCurveTo(cpX,cpY,ftX,ftY); ctx.lineTo(fbX,fbY);
+    ctx.stroke();
 
-    // Dark void - the passage opening
+    // Dark void — closed path so the floor line seals the fill
     ctx.fillStyle='#010100';
     ctx.beginPath();
-    ctx.moveTo(0,0);
-    ctx.lineTo(0,0.5);
-    ctx.arc(0.5,0.5,0.5,Math.PI,0,false);
-    ctx.lineTo(1,0);
-    ctx.closePath();
-    ctx.fill();
+    ctx.moveTo(nbX,nbY); ctx.lineTo(ntX,ntY);
+    ctx.quadraticCurveTo(cpX,cpY,ftX,ftY); ctx.lineTo(fbX,fbY);
+    ctx.closePath(); ctx.fill();
 
     ctx.restore();
 
-    // Proximity prompt (screen space, transform already restored)
+    // Proximity prompt
     if(game.sidePassageNear&&!game.sidePassageVisited){
         const boxH=56,boxY=H-64-boxH;
         ctx.fillStyle='rgba(0,0,0,0.90)';ctx.fillRect(0,boxY,W,boxH);
@@ -2935,10 +2952,10 @@ window.addEventListener('keydown',e=>{
     // Paper overlay – CTRL opens (if collected), Enter/Escape closes
     if(appScreen==='game'){
         if(e.key==='Control'&&!e.repeat){
-            e.preventDefault();
-            const _losses=parseInt(localStorage.getItem('doom_losses')||'0');
             const _resets=parseInt(localStorage.getItem('doom_resets')||'0');
-            if(game.paperCollected&&(_losses>=3||_resets>=3)&&!game.paperShowing) showPaper();
+            if(_resets<3) return;
+            e.preventDefault();
+            if(game.paperCollected&&!game.paperShowing) showPaper();
             return;
         }
         if(game.paperShowing){
