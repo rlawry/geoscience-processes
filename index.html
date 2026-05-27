@@ -504,6 +504,27 @@
             animation: blink 1.1s step-end infinite;
         }
 
+        /* ── simple graphics toggle (bottom-right, above HUD) ── */
+        #simpleGfxToggle {
+            position: absolute;
+            bottom: 66px;
+            right: 8px;
+            z-index: 50;
+            color: #776644;
+            font-family: 'Courier New', monospace;
+            font-size: 10px;
+            letter-spacing: 1px;
+            cursor: pointer;
+            user-select: none;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            opacity: 0.55;
+            transition: opacity 0.15s;
+        }
+        #simpleGfxToggle:hover { opacity: 1; }
+        #simpleGfxToggle input { accent-color: #aa7733; cursor: pointer; }
+
         /* ── game over ───────────────────────────────── */
         #gameOver {
             display: none;
@@ -580,6 +601,12 @@
             <div id="paperPrompt"></div>
         </div>
     </div>
+
+    <!-- Simple graphics toggle -->
+    <label id="simpleGfxToggle" title="Simplify graphics for better performance">
+        <input type="checkbox" id="simpleGfxCheck" onchange="simplifiedGraphics=this.checked">
+        SIMPLE GFX
+    </label>
 
     <!-- Game over -->
     <div id="gameOver">
@@ -892,6 +919,16 @@ function nameHandleEnter() {
     document.getElementById('screenName').classList.remove('active');
     startGame();
 }
+
+// ═══════════════════════════════════════════════════════
+//  PERFORMANCE OPTION
+// ═══════════════════════════════════════════════════════
+let simplifiedGraphics = false;
+
+// Torch drain scalar. Capped at 1.0 so high-refresh monitors don't over-drain.
+// Below 60 fps it falls proportionally — slow machines get proportionally less drain.
+let frameDelta = 1;
+let _lastFrameTime = 0;
 
 // ═══════════════════════════════════════════════════════
 //  GAME STATE
@@ -1371,43 +1408,61 @@ function drawTunnel(){
     ctx.fillStyle='#000';ctx.fillRect(0,0,W,H);
 
     // Ceiling
-    const cg=ctx.createLinearGradient(cx,0,cx,cy);
-    bld(cg,pal.ceilH,pal.ceilS,pal.ceilL);
-    ctx.fillStyle=cg;
+    if(simplifiedGraphics){
+        ctx.fillStyle=`hsl(${pal.ceilH},${pal.ceilS}%,${(pal.ceilL*0.45*tp).toFixed(1)}%)`;
+    } else {
+        const cg=ctx.createLinearGradient(cx,0,cx,cy);
+        bld(cg,pal.ceilH,pal.ceilS,pal.ceilL);
+        ctx.fillStyle=cg;
+    }
     ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(W,0);ctx.lineTo(cx,cy);ctx.closePath();ctx.fill();
 
     // Floor
-    const fg=ctx.createLinearGradient(cx,H,cx,cy);
-    bld(fg,pal.floorH,pal.floorS,pal.floorL);
-    ctx.fillStyle=fg;
+    if(simplifiedGraphics){
+        ctx.fillStyle=`hsl(${pal.floorH},${pal.floorS}%,${(pal.floorL*0.45*tp).toFixed(1)}%)`;
+    } else {
+        const fg=ctx.createLinearGradient(cx,H,cx,cy);
+        bld(fg,pal.floorH,pal.floorS,pal.floorL);
+        ctx.fillStyle=fg;
+    }
     ctx.beginPath();ctx.moveTo(0,H);ctx.lineTo(W,H);ctx.lineTo(cx,cy);ctx.closePath();ctx.fill();
 
     // Left wall
-    const lg=ctx.createLinearGradient(0,cy,cx,cy);
-    bld(lg,pal.wallH,pal.wallS,pal.wallL);
-    ctx.fillStyle=lg;
+    if(simplifiedGraphics){
+        ctx.fillStyle=`hsl(${pal.wallH},${pal.wallS}%,${(pal.wallL*0.40*tp).toFixed(1)}%)`;
+    } else {
+        const lg=ctx.createLinearGradient(0,cy,cx,cy);
+        bld(lg,pal.wallH,pal.wallS,pal.wallL);
+        ctx.fillStyle=lg;
+    }
     ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(0,H);ctx.lineTo(cx,cy);ctx.closePath();ctx.fill();
 
     // Right wall
-    const rg=ctx.createLinearGradient(W,cy,cx,cy);
-    bld(rg,pal.wallH,pal.wallS,pal.wallL);
-    ctx.fillStyle=rg;
+    if(simplifiedGraphics){
+        ctx.fillStyle=`hsl(${pal.wallH},${pal.wallS}%,${(pal.wallL*0.40*tp).toFixed(1)}%)`;
+    } else {
+        const rg=ctx.createLinearGradient(W,cy,cx,cy);
+        bld(rg,pal.wallH,pal.wallS,pal.wallL);
+        ctx.fillStyle=rg;
+    }
     ctx.beginPath();ctx.moveTo(W,0);ctx.lineTo(W,H);ctx.lineTo(cx,cy);ctx.closePath();ctx.fill();
 
     // Face-division lines
-    const lineDS=[0,65,145,230,295,325,342,364,500];
-    ctx.lineWidth=1;
-    for(let i=1;i<8;i++){
-        const t=i/8;
-        for(const [x0,y0] of[[0,H/2*t],[W,H/2*t],[W*t*0.5,H],[W-W*t*0.5,H]]){
-            const g=ctx.createLinearGradient(x0,y0,cx,cy);
-            lineDS.forEach(d=>{
-                const gt=d/(FOCAL+d);
-                g.addColorStop(Math.min(gt,0.998),`hsl(${pal.lineH},${pal.lineS.toFixed(0)}%,${wallL(d,20,tp).toFixed(1)}%)`);
-            });
-            g.addColorStop(1,'#000');
-            ctx.strokeStyle=g;
-            ctx.beginPath();ctx.moveTo(x0,y0);ctx.lineTo(cx,cy);ctx.stroke();
+    if(!simplifiedGraphics){
+        const lineDS=[0,65,145,230,295,325,342,364,500];
+        ctx.lineWidth=1;
+        for(let i=1;i<8;i++){
+            const t=i/8;
+            for(const [x0,y0] of[[0,H/2*t],[W,H/2*t],[W*t*0.5,H],[W-W*t*0.5,H]]){
+                const g=ctx.createLinearGradient(x0,y0,cx,cy);
+                lineDS.forEach(d=>{
+                    const gt=d/(FOCAL+d);
+                    g.addColorStop(Math.min(gt,0.998),`hsl(${pal.lineH},${pal.lineS.toFixed(0)}%,${wallL(d,20,tp).toFixed(1)}%)`);
+                });
+                g.addColorStop(1,'#000');
+                ctx.strokeStyle=g;
+                ctx.beginPath();ctx.moveTo(x0,y0);ctx.lineTo(cx,cy);ctx.stroke();
+            }
         }
     }
 
@@ -1454,37 +1509,48 @@ function drawTunnel(){
     }
 
     // Torch glow (warm radial - torch bearer at bottom-center)
-    const tg=ctx.createRadialGradient(cx,H*0.82,4,cx,H*0.45,W*0.9);
-    tg.addColorStop(0,`rgba(255,150,25,${0.28*tp})`);
-    tg.addColorStop(0.3,`rgba(200,85,8,${0.16*tp})`);
-    tg.addColorStop(0.65,`rgba(130,35,0,${0.07*tp})`);
-    tg.addColorStop(1,'rgba(0,0,0,0)');
-    ctx.fillStyle=tg;ctx.fillRect(0,0,W,H);
+    if(!simplifiedGraphics){
+        const tg=ctx.createRadialGradient(cx,H*0.82,4,cx,H*0.45,W*0.9);
+        tg.addColorStop(0,`rgba(255,150,25,${0.28*tp})`);
+        tg.addColorStop(0.3,`rgba(200,85,8,${0.16*tp})`);
+        tg.addColorStop(0.65,`rgba(130,35,0,${0.07*tp})`);
+        tg.addColorStop(1,'rgba(0,0,0,0)');
+        ctx.fillStyle=tg;ctx.fillRect(0,0,W,H);
+    }
 
     // Centre blackout - four triangles matching the tunnel rect at TORCH_DEPTH
-    // Each fades from transparent at the rect boundary to black at (cx,cy)
     const rb=pRect(TORCH_DEPTH);
     const rx=rb.x,ry=rb.y,rr=rb.x+rb.w,rb2=rb.y+rb.h;
-    [
-        [rx,ry, rr,ry,    cx,ry,  cx,cy ],  // top face
-        [rx,rb2,rr,rb2,   cx,rb2, cx,cy ],  // bottom face
-        [rx,ry, rx,rb2,   rx,cy,  cx,cy ],  // left face
-        [rr,ry, rr,rb2,   rr,cy,  cx,cy ],  // right face
-    ].forEach(([x1,y1,x2,y2,gx1,gy1,gx2,gy2])=>{
-        const g=ctx.createLinearGradient(gx1,gy1,gx2,gy2);
-        g.addColorStop(0,'rgba(0,0,0,0)');
-        g.addColorStop(0.5,'rgba(0,0,0,0.80)');
-        g.addColorStop(1,'rgba(0,0,0,1)');
-        ctx.fillStyle=g;
-        ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.lineTo(cx,cy);ctx.closePath();ctx.fill();
-    });
+    if(simplifiedGraphics){
+        ctx.fillStyle='#000';
+        [[rx,ry,rr,ry],[rx,rb2,rr,rb2],[rx,ry,rx,rb2],[rr,ry,rr,rb2]]
+            .forEach(([x1,y1,x2,y2])=>{
+                ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.lineTo(cx,cy);ctx.closePath();ctx.fill();
+            });
+    } else {
+        [
+            [rx,ry, rr,ry,    cx,ry,  cx,cy ],
+            [rx,rb2,rr,rb2,   cx,rb2, cx,cy ],
+            [rx,ry, rx,rb2,   rx,cy,  cx,cy ],
+            [rr,ry, rr,rb2,   rr,cy,  cx,cy ],
+        ].forEach(([x1,y1,x2,y2,gx1,gy1,gx2,gy2])=>{
+            const g=ctx.createLinearGradient(gx1,gy1,gx2,gy2);
+            g.addColorStop(0,'rgba(0,0,0,0)');
+            g.addColorStop(0.5,'rgba(0,0,0,0.80)');
+            g.addColorStop(1,'rgba(0,0,0,1)');
+            ctx.fillStyle=g;
+            ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.lineTo(cx,cy);ctx.closePath();ctx.fill();
+        });
+    }
 
     // Screen-edge vignette
-    const vigDark=0.28+(1-tp)*0.38;
-    const vg=ctx.createRadialGradient(cx,cy,W*0.38,cx,cy,W*0.84);
-    vg.addColorStop(0,'rgba(0,0,0,0)');
-    vg.addColorStop(1,`rgba(0,0,0,${vigDark})`);
-    ctx.fillStyle=vg;ctx.fillRect(0,0,W,H);
+    if(!simplifiedGraphics){
+        const vigDark=0.28+(1-tp)*0.38;
+        const vg=ctx.createRadialGradient(cx,cy,W*0.38,cx,cy,W*0.84);
+        vg.addColorStop(0,'rgba(0,0,0,0)');
+        vg.addColorStop(1,`rgba(0,0,0,${vigDark})`);
+        ctx.fillStyle=vg;ctx.fillRect(0,0,W,H);
+    }
 }
 
 // ═══════════════════════════════════════════════════════
@@ -1509,12 +1575,18 @@ function drawDoors(){
         const tp=(game.torch/TORCH_MAX)*game.flicker;
         const d0=Math.max(depth,0);
         const fL=wallL(d0,36,tp);   // face lightness
-        const sg=ctx.createLinearGradient(r.x,r.y,r.x+r.w,r.y+r.h);
-        sg.addColorStop(0,  `hsl(28,36%,${(fL*0.82).toFixed(1)}%)`);
-        sg.addColorStop(0.3,`hsl(28,40%,${fL.toFixed(1)}%)`);
-        sg.addColorStop(0.7,`hsl(28,36%,${(fL*0.88).toFixed(1)}%)`);
-        sg.addColorStop(1,  `hsl(28,30%,${(fL*0.60).toFixed(1)}%)`);
-        ctx.fillStyle=sg;ctx.fillRect(r.x,r.y,r.w,r.h);
+        let doorFill;
+        if(simplifiedGraphics){
+            doorFill=`hsl(28,38%,${fL.toFixed(1)}%)`;
+        } else {
+            const sg=ctx.createLinearGradient(r.x,r.y,r.x+r.w,r.y+r.h);
+            sg.addColorStop(0,  `hsl(28,36%,${(fL*0.82).toFixed(1)}%)`);
+            sg.addColorStop(0.3,`hsl(28,40%,${fL.toFixed(1)}%)`);
+            sg.addColorStop(0.7,`hsl(28,36%,${(fL*0.88).toFixed(1)}%)`);
+            sg.addColorStop(1,  `hsl(28,30%,${(fL*0.60).toFixed(1)}%)`);
+            doorFill=sg;
+        }
+        ctx.fillStyle=doorFill;ctx.fillRect(r.x,r.y,r.w,r.h);
         const rows=6,cols=4,bh=r.h/rows,bw=r.w/cols;
         const brickA=fL>0.5?Math.min(fL/36*0.68,0.68):0;
         ctx.save();ctx.beginPath();ctx.rect(r.x,r.y,r.w,r.h);ctx.clip();
@@ -1535,13 +1607,19 @@ function drawDoors(){
         ctx.fillStyle='#010101';archPath(cx,bY,hw,archH);ctx.fill();
         ctx.save();archPath(cx,bY,hw,archH);ctx.clip();
         const woodL=wallL(d0,24,tp);
-        const dg=ctx.createLinearGradient(cx-hw,bY-archH-hw,cx+hw,bY);
-        dg.addColorStop(0,  `hsl(22,62%,${(woodL*0.68).toFixed(1)}%)`);
-        dg.addColorStop(0.3,`hsl(22,68%,${woodL.toFixed(1)}%)`);
-        dg.addColorStop(0.55,`hsl(22,64%,${(woodL*0.88).toFixed(1)}%)`);
-        dg.addColorStop(0.8,`hsl(22,58%,${(woodL*0.68).toFixed(1)}%)`);
-        dg.addColorStop(1,  `hsl(22,52%,${(woodL*0.50).toFixed(1)}%)`);
-        ctx.fillStyle=dg;ctx.fillRect(cx-hw,bY-archH-hw,hw*2,archH+hw*1.2);
+        let archFill;
+        if(simplifiedGraphics){
+            archFill=`hsl(22,65%,${woodL.toFixed(1)}%)`;
+        } else {
+            const dg=ctx.createLinearGradient(cx-hw,bY-archH-hw,cx+hw,bY);
+            dg.addColorStop(0,  `hsl(22,62%,${(woodL*0.68).toFixed(1)}%)`);
+            dg.addColorStop(0.3,`hsl(22,68%,${woodL.toFixed(1)}%)`);
+            dg.addColorStop(0.55,`hsl(22,64%,${(woodL*0.88).toFixed(1)}%)`);
+            dg.addColorStop(0.8,`hsl(22,58%,${(woodL*0.68).toFixed(1)}%)`);
+            dg.addColorStop(1,  `hsl(22,52%,${(woodL*0.50).toFixed(1)}%)`);
+            archFill=dg;
+        }
+        ctx.fillStyle=archFill;ctx.fillRect(cx-hw,bY-archH-hw,hw*2,archH+hw*1.2);
         const plankA=woodL>0.5?Math.min(woodL/24*0.65,0.65):0;
         ctx.strokeStyle=`rgba(10,4,1,${plankA.toFixed(2)})`;ctx.lineWidth=Math.max(1,hw*0.045);
         const plankH=archH/5;
@@ -1737,7 +1815,7 @@ function update(){
     } else { game.sidePassageNear=false; }
     // Torch only drains before the exit is visible (pause during paper reading or purchase)
     if(!game.exitPos&&!game.slipShowing&&!game.purchaseDialogOpen){
-        game.torch-=game.inDialog?TORCH_WAIT:TORCH_WALK;
+        game.torch-=(game.inDialog?TORCH_WAIT:TORCH_WALK)*frameDelta;
         if(game.torch<=0){game.torch=0;endGame(true);return;}
     }
     // Paper pickup trigger
@@ -2029,11 +2107,13 @@ function drawWallTorches(){
 
         ctx.save();
         const glowR=Math.max(6,20*s);
-        const gg=ctx.createRadialGradient(tipX,tipY,0,tipX,tipY,glowR*2.2);
-        gg.addColorStop(0,`rgba(255,170,40,${0.55*vis})`);
-        gg.addColorStop(1,'rgba(255,90,0,0)');
-        ctx.fillStyle=gg;
-        ctx.beginPath();ctx.arc(tipX,tipY,glowR*2.2,0,Math.PI*2);ctx.fill();
+        if(!simplifiedGraphics){
+            const gg=ctx.createRadialGradient(tipX,tipY,0,tipX,tipY,glowR*2.2);
+            gg.addColorStop(0,`rgba(255,170,40,${0.55*vis})`);
+            gg.addColorStop(1,'rgba(255,90,0,0)');
+            ctx.fillStyle=gg;
+            ctx.beginPath();ctx.arc(tipX,tipY,glowR*2.2,0,Math.PI*2);ctx.fill();
+        }
 
         ctx.strokeStyle=`rgba(65,38,12,${vis})`;
         ctx.lineWidth=Math.max(1,3.5*s);ctx.lineCap='round';
@@ -2102,12 +2182,14 @@ function drawWallTorches(){
                     const gx=doorR.x+doorR.w*0.05;
                     const gy=doorR.y+doorR.h*0.42;
                     const gr=doorR.h*0.42;
-                    const gg=ctx.createRadialGradient(gx,gy,0,gx,gy,gr*2.5);
-                    gg.addColorStop(0,`rgba(255,160,40,${alpha})`);
-                    gg.addColorStop(0.4,`rgba(200,80,15,${(alpha*0.35).toFixed(3)})`);
-                    gg.addColorStop(1,'rgba(0,0,0,0)');
-                    ctx.fillStyle=gg;
-                    ctx.beginPath();ctx.arc(gx,gy,gr*2.5,0,Math.PI*2);ctx.fill();
+                    if(!simplifiedGraphics){
+                        const gg=ctx.createRadialGradient(gx,gy,0,gx,gy,gr*2.5);
+                        gg.addColorStop(0,`rgba(255,160,40,${alpha})`);
+                        gg.addColorStop(0.4,`rgba(200,80,15,${(alpha*0.35).toFixed(3)})`);
+                        gg.addColorStop(1,'rgba(0,0,0,0)');
+                        ctx.fillStyle=gg;
+                        ctx.beginPath();ctx.arc(gx,gy,gr*2.5,0,Math.PI*2);ctx.fill();
+                    }
                 });
             }
         }
@@ -2359,14 +2441,20 @@ function drawMountainScene(bx,by,bw,bh,mode){
     ctx.save();
     ctx.beginPath();ctx.rect(bx,by,bw,bh);ctx.clip();
     // Sky
-    const sky=ctx.createLinearGradient(bx,by,bx,by+bh);
-    sky.addColorStop(0,'#1a5fa8');sky.addColorStop(0.55,'#64c8f0');sky.addColorStop(1,'#b8eaf8');
-    ctx.fillStyle=sky;ctx.fillRect(bx,by,bw,bh);
+    if(simplifiedGraphics){
+        ctx.fillStyle='#4090c8';ctx.fillRect(bx,by,bw,bh);
+    } else {
+        const sky=ctx.createLinearGradient(bx,by,bx,by+bh);
+        sky.addColorStop(0,'#1a5fa8');sky.addColorStop(0.55,'#64c8f0');sky.addColorStop(1,'#b8eaf8');
+        ctx.fillStyle=sky;ctx.fillRect(bx,by,bw,bh);
+    }
     // Sun
     const sx=bx+bw*0.80,sy=by+bh*0.14,sr=bw*0.065;
-    const sg=ctx.createRadialGradient(sx,sy,0,sx,sy,sr*3);
-    sg.addColorStop(0,'rgba(255,255,210,1)');sg.addColorStop(0.35,'rgba(255,240,100,0.7)');sg.addColorStop(1,'rgba(255,210,50,0)');
-    ctx.fillStyle=sg;ctx.beginPath();ctx.arc(sx,sy,sr*3,0,Math.PI*2);ctx.fill();
+    if(!simplifiedGraphics){
+        const sg=ctx.createRadialGradient(sx,sy,0,sx,sy,sr*3);
+        sg.addColorStop(0,'rgba(255,255,210,1)');sg.addColorStop(0.35,'rgba(255,240,100,0.7)');sg.addColorStop(1,'rgba(255,210,50,0)');
+        ctx.fillStyle=sg;ctx.beginPath();ctx.arc(sx,sy,sr*3,0,Math.PI*2);ctx.fill();
+    }
     ctx.fillStyle='#fffff0';ctx.beginPath();ctx.arc(sx,sy,sr,0,Math.PI*2);ctx.fill();
     const horizY=by+bh*0.52;
     // Far mountains
@@ -2397,9 +2485,13 @@ function drawMountainScene(bx,by,bw,bh,mode){
         .forEach(([px,py])=>ctx.lineTo(bx+bw*px,by+bh*py));
     ctx.lineTo(bx+bw,horizY);ctx.closePath();ctx.fill();
     // Ground
-    const gnd=ctx.createLinearGradient(bx,horizY,bx,by+bh);
-    gnd.addColorStop(0,'#5ec240');gnd.addColorStop(0.25,'#4aaa30');gnd.addColorStop(1,'#2a6818');
-    ctx.fillStyle=gnd;ctx.fillRect(bx,horizY,bw,by+bh-horizY);
+    if(simplifiedGraphics){
+        ctx.fillStyle='#4aaa30';ctx.fillRect(bx,horizY,bw,by+bh-horizY);
+    } else {
+        const gnd=ctx.createLinearGradient(bx,horizY,bx,by+bh);
+        gnd.addColorStop(0,'#5ec240');gnd.addColorStop(0.25,'#4aaa30');gnd.addColorStop(1,'#2a6818');
+        ctx.fillStyle=gnd;ctx.fillRect(bx,horizY,bw,by+bh-horizY);
+    }
     // Clouds
     const cs=bw*0.065;
     drawCloud(bx+bw*0.13,by+bh*0.10,cs*1.1);
@@ -2620,11 +2712,17 @@ function drawPassageRoom(){
     ctx.beginPath();ctx.moveTo(W,0);ctx.lineTo(W,H);ctx.lineTo(bx+backW,by+backH);ctx.lineTo(bx+backW,by);ctx.closePath();ctx.fill();
 
     // Back wall stone surface
-    const bwg=ctx.createLinearGradient(bx,by,bx+backW,by+backH);
-    bwg.addColorStop(0,`hsl(${pal.wallH},${(pal.wallS*0.45).toFixed(0)}%,14%)`);
-    bwg.addColorStop(0.55,`hsl(${pal.wallH},${(pal.wallS*0.45).toFixed(0)}%,17%)`);
-    bwg.addColorStop(1,`hsl(${pal.wallH},${(pal.wallS*0.4).toFixed(0)}%,10%)`);
-    ctx.fillStyle=bwg;ctx.fillRect(bx,by,backW,backH);
+    let bwFill;
+    if(simplifiedGraphics){
+        bwFill=`hsl(${pal.wallH},${(pal.wallS*0.45).toFixed(0)}%,15%)`;
+    } else {
+        const bwg=ctx.createLinearGradient(bx,by,bx+backW,by+backH);
+        bwg.addColorStop(0,`hsl(${pal.wallH},${(pal.wallS*0.45).toFixed(0)}%,14%)`);
+        bwg.addColorStop(0.55,`hsl(${pal.wallH},${(pal.wallS*0.45).toFixed(0)}%,17%)`);
+        bwg.addColorStop(1,`hsl(${pal.wallH},${(pal.wallS*0.4).toFixed(0)}%,10%)`);
+        bwFill=bwg;
+    }
+    ctx.fillStyle=bwFill;ctx.fillRect(bx,by,backW,backH);
 
     // Stone block seams on back wall
     ctx.save();ctx.beginPath();ctx.rect(bx,by,backW,backH);ctx.clip();
@@ -2644,11 +2742,13 @@ function drawPassageRoom(){
     const tx=bx+backW*0.74,ty=by+backH*0.32,ts=W*0.020;
     if(!game.sidePassageTorchTaken){
         // Glow
-        const tg=ctx.createRadialGradient(tx,ty,0,tx,ty,ts*9);
-        tg.addColorStop(0,'rgba(255,145,28,0.60)');
-        tg.addColorStop(0.45,'rgba(180,70,0,0.22)');
-        tg.addColorStop(1,'rgba(0,0,0,0)');
-        ctx.fillStyle=tg;ctx.beginPath();ctx.arc(tx,ty,ts*9,0,Math.PI*2);ctx.fill();
+        if(!simplifiedGraphics){
+            const tg=ctx.createRadialGradient(tx,ty,0,tx,ty,ts*9);
+            tg.addColorStop(0,'rgba(255,145,28,0.60)');
+            tg.addColorStop(0.45,'rgba(180,70,0,0.22)');
+            tg.addColorStop(1,'rgba(0,0,0,0)');
+            ctx.fillStyle=tg;ctx.beginPath();ctx.arc(tx,ty,ts*9,0,Math.PI*2);ctx.fill();
+        }
         // Stick
         ctx.strokeStyle='rgba(75,42,10,0.92)';ctx.lineWidth=Math.max(2,ts*0.65);ctx.lineCap='round';
         ctx.beginPath();ctx.moveTo(tx,ty+ts*2.8);ctx.lineTo(tx,ty);ctx.stroke();
@@ -2909,7 +3009,14 @@ function drawFloorCoins(){
     }
 }
 
-function loop(){update();drawTunnel();drawDoors();drawSidePassage();drawPassageRoom();drawWallTorches();drawHallwaySlips();drawFloorCoins();drawExitPortal();drawPaperInTunnel();drawFade();drawNotepadOverlay();drawHUD();requestAnimationFrame(loop);}
+function loop(timestamp){
+    const dt=_lastFrameTime?Math.min(timestamp-_lastFrameTime,100):16.667;
+    _lastFrameTime=timestamp;
+    // Cap at 1.0: low FPS → less drain/sec (player already struggling, don't penalise).
+    // High FPS → capped so a 120hz monitor doesn't burn torch 2× faster than 60hz.
+    frameDelta=Math.min(1,dt*0.06); // 1.0 at 60fps, <1 at lower FPS, stays 1 above 60fps
+    update();drawTunnel();drawDoors();drawSidePassage();drawPassageRoom();drawWallTorches();drawHallwaySlips();drawFloorCoins();drawExitPortal();drawPaperInTunnel();drawFade();drawNotepadOverlay();drawHUD();requestAnimationFrame(loop);
+}
 
 // ═══════════════════════════════════════════════════════
 //  BLOCK CURSORS
